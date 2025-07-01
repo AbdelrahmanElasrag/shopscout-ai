@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useAuth } from '../lib/auth-context';
+import { useFavorites } from '../lib/favorites-context';
 import { Platform } from '../lib/countries';
+import { analyzeSearchQuery, generateRelevantProductTitle, brandsByCategory } from '../lib/search-engine';
 
 interface Product {
   id: string;
@@ -32,6 +34,7 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
   const [canLoadMore, setCanLoadMore] = useState(false);
   
   const { user, selectedCountry } = useAuth();
+  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
   // Array of product images for realistic appearance
   const productImages = [
@@ -77,23 +80,35 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
     return productImages[index % productImages.length] || productImages[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
   };
 
-  const generateMockProducts = (startIndex: number = 0, count: number = 6): Product[] => {
-    if (!selectedCountry) return [];
+  const generateSmartProducts = (startIndex: number = 0, count: number = 6): Product[] => {
+    if (!selectedCountry || !query.trim()) return [];
+
+    // Analyze the search query to get relevant category and images
+    const searchResult = analyzeSearchQuery(query);
+    const brands = brandsByCategory[searchResult.category] || brandsByCategory.general;
 
     return selectedCountry.platforms.flatMap((platform, platformIndex) => 
-      Array.from({ length: count / selectedCountry.platforms.length }, (_, index) => {
-        const productIndex = startIndex + platformIndex * (count / selectedCountry.platforms.length) + index;
+      Array.from({ length: Math.ceil(count / selectedCountry.platforms.length) }, (_, index) => {
+        const productIndex = startIndex + platformIndex * Math.ceil(count / selectedCountry.platforms.length) + index;
         const productId = `PROD${String(productIndex + 1000).padStart(8, '0')}`;
-        const productTitle = `${query} - ${['Pro', 'Premium', 'Deluxe', 'Ultimate', 'Advanced'][productIndex % 5]} Edition`;
+        
+        // Generate relevant product title based on search query
+        const variation = searchResult.productVariations[productIndex % searchResult.productVariations.length];
+                 const productTitle = generateRelevantProductTitle(query || 'Product', variation, brands);
+        
+        // Use category-appropriate pricing
+        const basePrice = searchResult.basePrice.min + Math.random() * (searchResult.basePrice.max - searchResult.basePrice.min);
+        const price = Math.floor(basePrice);
+        const originalPrice = Math.random() > 0.4 ? Math.floor(price * (1.2 + Math.random() * 0.5)) : undefined;
         
         return {
           id: `${platform.id}_${productId}`,
           title: productTitle,
-          price: Math.floor(Math.random() * 1000) + 50,
-          originalPrice: Math.random() > 0.3 ? Math.floor(Math.random() * 1200) + 150 : undefined,
+          price,
+          originalPrice,
           currency: selectedCountry.currency,
           currencySymbol: selectedCountry.currencySymbol,
-          image: getProductImage(productIndex),
+          image: searchResult.relevantImages[productIndex % searchResult.relevantImages.length] || searchResult.relevantImages[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop',
           rating: 3.5 + Math.random() * 1.5,
           reviewCount: Math.floor(Math.random() * 2000) + 100,
           platform,
@@ -101,7 +116,7 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
           availability: ['in-stock', 'in-stock', 'in-stock', 'limited', 'out-of-stock'][Math.floor(Math.random() * 5)] as 'in-stock' | 'out-of-stock' | 'limited'
         };
       })
-    ).sort((a, b) => a.price - b.price);
+    ).slice(0, count).sort((a, b) => a.price - b.price);
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -122,7 +137,7 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const newProducts = generateMockProducts(0, 9); // Start with 9 products
+      const newProducts = generateSmartProducts(0, 9); // Start with 9 products
       setProducts(newProducts);
       setCanLoadMore(true);
     } catch (error) {
@@ -141,7 +156,7 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
       // Simulate API call for more products
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const moreProducts = generateMockProducts(products.length, 6);
+      const moreProducts = generateSmartProducts(products.length, 6);
       setProducts(prev => [...prev, ...moreProducts]);
       
       // Simulate that we can only load more if we have less than 30 products
@@ -250,15 +265,47 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((product) => (
-                  <div key={product.id} className="border rounded-xl p-4 hover:shadow-lg transition-shadow group">
+                  <div key={product.id} className="border rounded-xl p-4 hover:shadow-lg transition-shadow group relative">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium text-gray-600 flex items-center space-x-2">
                         <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                         <span>{product.platform.name}</span>
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs ${getAvailabilityColor(product.availability)}`}>
-                        {getAvailabilityText(product.availability)}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            if (isFavorite(product.id)) {
+                              removeFromFavorites(product.id);
+                            } else {
+                              addToFavorites({
+                                id: product.id,
+                                title: product.title,
+                                price: product.price,
+                                currency: product.currency,
+                                currencySymbol: product.currencySymbol,
+                                image: product.image,
+                                platform: {
+                                  id: product.platform.id,
+                                  name: product.platform.name,
+                                  domain: product.platform.domain
+                                },
+                                url: product.url,
+                                dateAdded: new Date().toISOString()
+                              });
+                            }
+                          }}
+                          className={`p-1 rounded-full transition-colors ${
+                            isFavorite(product.id)
+                              ? 'text-red-500 hover:text-red-600'
+                              : 'text-gray-400 hover:text-red-500'
+                          }`}
+                        >
+                          {isFavorite(product.id) ? '❤️' : '🤍'}
+                        </button>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getAvailabilityColor(product.availability)}`}>
+                          {getAvailabilityText(product.availability)}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="relative overflow-hidden rounded-lg mb-3">

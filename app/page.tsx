@@ -4,13 +4,17 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import AuthModal from '../components/auth-modal';
 import SearchInterface from '../components/search-interface';
+import UserProfile from '../components/user-profile';
 
 export default function HomePage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, selectedCountry, signOut } = useAuth();
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
+  const openProfile = () => setIsProfileOpen(true);
+  const closeProfile = () => setIsProfileOpen(false);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
@@ -28,13 +32,16 @@ export default function HomePage() {
           
           <div className="flex items-center space-x-4">
             {user && selectedCountry && (
-              <div className="flex items-center space-x-3 text-sm">
+              <button
+                onClick={openProfile}
+                className="flex items-center space-x-3 text-sm hover:bg-gray-50 px-3 py-2 rounded-lg transition-colors"
+              >
                 <span className="text-gray-600">
                   {selectedCountry.flag} {selectedCountry.name} ({selectedCountry.currency})
                 </span>
                 <span className="text-gray-400">•</span>
                 <span className="text-gray-600">Hi, {user.name}!</span>
-              </div>
+              </button>
             )}
             
             {user ? (
@@ -202,6 +209,9 @@ export default function HomePage() {
 
       {/* Auth Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
+      
+      {/* User Profile Modal */}
+      <UserProfile isOpen={isProfileOpen} onClose={closeProfile} />
     </main>
   );
 }
