@@ -2,30 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { analyzeSearchQuery, popularCategories } from '@/lib/search-engine';
+import RealSearchEngine, { RealProduct, SearchFilters } from '@/lib/real-search-engine';
 import { countries } from '@/lib/countries';
 import { useAuth } from '@/lib/auth-context';
 import { useFavorites } from '@/lib/favorites-context';
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  discount?: string;
-  rating: number;
-  reviews: number;
-  image: string;
-  platform: string;
-  url: string;
-  stock: 'In Stock' | 'Out of Stock' | 'Limited Stock';
-  currency: string;
-}
+// Using RealProduct from real-search-engine.ts
+type Product = RealProduct;
 
+// Using SearchFilters from real-search-engine.ts but with compatible naming
 interface Filters {
   priceRange: { min: number; max: number };
   minRating: number;
   inStock: boolean;
-  sortBy: 'relevance' | 'price-low' | 'price-high' | 'rating' | 'reviews';
+  sortBy: 'relevance' | 'price_low' | 'price_high' | 'rating' | 'reviews';
 }
 
 const PLATFORM_LOGOS: Record<string, string> = {
@@ -102,66 +92,24 @@ export default function SearchInterface() {
     }
   };
 
-  function generateMockProducts(query: string, count: number): Product[] {
-    const analysis = analyzeSearchQuery(query);
-    const platforms = currentCountry?.platforms || [];
-    const currency = currentCountry?.currency || 'USD';
-    const currencySymbol = currentCountry?.currencySymbol || '$';
-
-    const stockOptions: Product['stock'][] = ['In Stock', 'Out of Stock', 'Limited Stock'];
-    const products: Product[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const platformIndex = i % platforms.length;
-      const platform = platforms[platformIndex];
+  async function searchRealProducts(query: string, count: number): Promise<Product[]> {
+    if (!currentCountry) return [];
+    
+    try {
+      const searchEngine = new RealSearchEngine(currentCountry);
+      const searchFilters: SearchFilters = {
+        priceRange: filters.priceRange,
+        minRating: filters.minRating,
+        inStock: filters.inStock,
+        sortBy: filters.sortBy
+      };
       
-      // Skip if platform is undefined
-      if (!platform) continue;
-      
-      const variation = analysis.productVariations[i % analysis.productVariations.length] || 'Standard';
-      const brand = analysis.brands[i % analysis.brands.length] || 'Premium';
-      
-      // Generate clean product title
-      let productName;
-      if (analysis.category === 'laptop' && query.toLowerCase().includes('legion')) {
-        // Special handling for Legion laptops - only use Lenovo
-        productName = `Lenovo Legion 5 Pro ${variation}`;
-      } else {
-        productName = `${brand} ${query} ${variation}`.replace(/\s+/g, ' ').trim();
-      }
-
-      const basePrice = Math.floor(
-        Math.random() * (analysis.basePrice.max - analysis.basePrice.min) + analysis.basePrice.min
-      );
-      
-      const hasDiscount = Math.random() < 0.4;
-      const originalPrice = hasDiscount ? Math.floor(basePrice * (1 + Math.random() * 0.5)) : undefined;
-      const discount = hasDiscount ? `-${Math.floor(((originalPrice! - basePrice) / originalPrice!) * 100)}%` : undefined;
-      
-      const rating = Math.round((3.5 + Math.random() * 1.5) * 10) / 10;
-      const reviews = Math.floor(Math.random() * 2000) + 50;
-      const stock = stockOptions[Math.floor(Math.random() * stockOptions.length)] || 'In Stock';
-      
-      const imageIndex = i % analysis.relevantImages.length;
-      const image = analysis.relevantImages[imageIndex] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
-
-      products.push({
-        id: `${platform.name.replace(/\s+/g, '-').toLowerCase()}-${i + 1}`,
-        name: productName,
-        price: basePrice,
-        originalPrice,
-        discount,
-        rating,
-        reviews,
-        image: image + `&t=${Date.now()}-${i}`, // Add timestamp to make images unique
-        platform: platform.name,
-        url: generateSearchURL(platform.name, query),
-        stock,
-        currency
-      });
+      const result = await searchEngine.searchProducts(query, searchFilters, count);
+      return result.products;
+    } catch (error) {
+      console.error('Real product search error:', error);
+      return [];
     }
-
-    return products;
   }
 
   const handleSearch = async (searchQuery: string = query) => {
@@ -169,14 +117,10 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const realProducts = await searchRealProducts(searchQuery, 9);
       
-      const mockProducts = generateMockProducts(searchQuery, 9);
-      const filteredProducts = applyFilters(mockProducts);
-      
-      setResults(filteredProducts);
-      setTotalResults(filteredProducts.length);
+      setResults(realProducts);
+      setTotalResults(realProducts.length);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
@@ -189,13 +133,10 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const newProducts = await searchRealProducts(query, 6);
       
-      const newProducts = generateMockProducts(query, 6);
-      const filteredNewProducts = applyFilters(newProducts);
-      
-      setResults(prev => [...prev, ...filteredNewProducts]);
-      setTotalResults(prev => prev + filteredNewProducts.length);
+      setResults(prev => [...prev, ...newProducts]);
+      setTotalResults(prev => prev + newProducts.length);
     } catch (error) {
       console.error('Load more error:', error);
     } finally {
