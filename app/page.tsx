@@ -77,7 +77,7 @@ export default function HomePage() {
           </p>
           
           {/* Main Search Interface */}
-          <SearchInterface onAuthRequired={openAuthModal} />
+          <SearchInterface />
 
           {/* Popular Searches - Only show if user is not logged in */}
           {!user && (
