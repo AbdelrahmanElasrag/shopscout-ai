@@ -299,4 +299,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ by the ShopScout Team**
 
-*Save money, shop smart with AI-powered price comparison!* 
+*Save money, shop smart with AI-powered price comparison!* #   S h o p S c o u t   A I   -   P r o d u c t i o n   R e a d y  
+ 
