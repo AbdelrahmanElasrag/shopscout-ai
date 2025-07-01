@@ -307,41 +307,41 @@ export class LiveProductScraper {
     
     switch (platform.scraper) {
       case 'amazon':
-        return this.parseAmazonHTML(html, platform);
+        return this.parseAmazonHTML(html, platform, query);
       case 'noon':
-        return this.parseNoonHTML(html, platform);
+        return this.parseNoonHTML(html, platform, query);
       case 'jumia':
-        return this.parseJumiaHTML(html, platform);
+        return this.parseJumiaHTML(html, platform, query);
       case 'walmart':
-        return this.parseWalmartHTML(html, platform);
+        return this.parseWalmartHTML(html, platform, query);
       case 'argos':
-        return this.parseArgosHTML(html, platform);
+        return this.parseArgosHTML(html, platform, query);
       default:
         return [];
     }
   }
 
-  // Platform-specific HTML parsers (use sample data until API keys configured)
-  private parseAmazonHTML(html: string, platform: any): LiveProduct[] {
-    // When API keys are configured, this would use real DOM parsing
-    // For now, return sample data for demonstration
-    return this.createRealisticAmazonData(platform);
+  // Platform-specific HTML parsers (now with search-aware sample data)
+  private parseAmazonHTML(html: string, platform: any, query: string): LiveProduct[] {
+    // For now, return varied sample data based on search context
+    // TODO: Replace with real HTML parsing when ready
+    return this.createRealisticAmazonData(platform, query);
   }
 
-  private parseNoonHTML(html: string, platform: any): LiveProduct[] {
-    return this.createRealisticNoonData(platform);
+  private parseNoonHTML(html: string, platform: any, query: string): LiveProduct[] {
+    return this.createRealisticNoonData(platform, query);
   }
 
-  private parseJumiaHTML(html: string, platform: any): LiveProduct[] {
-    return this.createRealisticJumiaData(platform);
+  private parseJumiaHTML(html: string, platform: any, query: string): LiveProduct[] {
+    return this.createRealisticJumiaData(platform, query);
   }
 
-  private parseWalmartHTML(html: string, platform: any): LiveProduct[] {
-    return this.createRealisticWalmartData(platform);
+  private parseWalmartHTML(html: string, platform: any, query: string): LiveProduct[] {
+    return this.createRealisticWalmartData(platform, query);
   }
 
-  private parseArgosHTML(html: string, platform: any): LiveProduct[] {
-    return this.createRealisticArgosData(platform);
+  private parseArgosHTML(html: string, platform: any, query: string): LiveProduct[] {
+    return this.createRealisticArgosData(platform, query);
   }
 
   // Intelligent ranking algorithm
@@ -443,87 +443,142 @@ export class LiveProductScraper {
     return Math.min(pricePosition * 100, 100);
   }
 
-  // Sample data generators (replaced by real parsing when API keys configured)
-  private createRealisticAmazonData(platform: any): LiveProduct[] {
-    // Return sample data for demonstration
-    const sampleProducts: LiveProduct[] = [
-      {
-        id: `amazon-${Date.now()}-1`,
-        title: 'iPhone 15 Pro Max 256GB Natural Titanium',
-        price: 1199,
-        originalPrice: 1299,
-        discount: '8%',
-        rating: 4.5,
-        reviewCount: 2847,
-        image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400',
-        brand: 'Apple',
-        seller: 'Amazon',
-        platform: {
-          id: 'amazon',
-          name: platform.name,
-          domain: platform.domain,
-          logo: '/amazon-logo.png'
-        },
-        url: `https://${platform.domain}/dp/B0CHX1W5YR`,
-        availability: 'in_stock' as const,
-        shipping: {
-          free: true,
-          estimatedDays: '2-3 days'
-        },
-        relevanceScore: 95,
-        authenticityScore: 98,
-        priceCompetitiveness: 85,
-        currency: this.country.currency,
-        currencySymbol: this.country.currencySymbol,
-        scrapedAt: new Date().toISOString()
-      }
-    ];
-    return sampleProducts;
+  // Sample data generators (search-aware for better simulation)
+  private createRealisticAmazonData(platform: any, query: string): LiveProduct[] {
+    const queryLower = query.toLowerCase();
+    const productVariations = this.getProductVariationsForQuery(queryLower);
+    
+    return productVariations.slice(0, 3).map((product, index) => ({
+      id: `amazon-${Date.now()}-${index}`,
+      title: product.title,
+      price: product.basePrice + Math.floor(Math.random() * 200),
+      originalPrice: product.basePrice + Math.floor(Math.random() * 300) + 100,
+      discount: `${Math.floor(Math.random() * 20) + 5}%`,
+      rating: 4.0 + Math.random() * 1,
+      reviewCount: Math.floor(Math.random() * 5000) + 100,
+      image: product.image,
+      brand: product.brand,
+      seller: 'Amazon',
+      platform: {
+        id: 'amazon',
+        name: platform.name,
+        domain: platform.domain,
+        logo: '/amazon-logo.png'
+      },
+      url: `https://${platform.domain}/dp/B${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+      availability: Math.random() > 0.2 ? 'in_stock' as const : 'limited_stock' as const,
+      shipping: {
+        free: Math.random() > 0.3,
+        estimatedDays: `${Math.floor(Math.random() * 3) + 1}-${Math.floor(Math.random() * 3) + 3} days`
+      },
+      relevanceScore: 85 + Math.random() * 15,
+      authenticityScore: 90 + Math.random() * 10,
+      priceCompetitiveness: 75 + Math.random() * 25,
+      currency: this.country.currency,
+      currencySymbol: this.country.currencySymbol,
+      scrapedAt: new Date().toISOString()
+    }));
   }
 
-  private createRealisticNoonData(platform: any): LiveProduct[] {
-    const sampleProducts: LiveProduct[] = [
-      {
-        id: `noon-${Date.now()}-1`,
-        title: 'Samsung Galaxy S24 Ultra 512GB Titanium Black',
-        price: 999,
-        rating: 4.6,
-        reviewCount: 1523,
-        image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400',
-        brand: 'Samsung',
-        seller: 'Noon',
-        platform: {
-          id: 'noon',
-          name: platform.name,
-          domain: platform.domain,
-          logo: '/noon-logo.png'
-        },
-        url: `https://${platform.domain}/product/B0CHX1W5YR/samsung-galaxy-s24-ultra`,
-        availability: 'in_stock' as const,
-        shipping: {
-          free: true,
-          estimatedDays: '1-2 days'
-        },
-        relevanceScore: 92,
-        authenticityScore: 95,
-        priceCompetitiveness: 90,
-        currency: this.country.currency,
-        currencySymbol: this.country.currencySymbol,
-        scrapedAt: new Date().toISOString()
-      }
-    ];
-    return sampleProducts;
+  private createRealisticNoonData(platform: any, query: string): LiveProduct[] {
+    const queryLower = query.toLowerCase();
+    const productVariations = this.getProductVariationsForQuery(queryLower);
+    
+    return productVariations.slice(2, 5).map((product, index) => ({
+      id: `noon-${Date.now()}-${index}`,
+      title: product.title,
+      price: product.basePrice + Math.floor(Math.random() * 150),
+      originalPrice: product.basePrice + Math.floor(Math.random() * 250) + 80,
+      discount: `${Math.floor(Math.random() * 15) + 5}%`,
+      rating: 4.1 + Math.random() * 0.8,
+      reviewCount: Math.floor(Math.random() * 3000) + 50,
+      image: product.image,
+      brand: product.brand,
+      seller: 'Noon',
+      platform: {
+        id: 'noon',
+        name: platform.name,
+        domain: platform.domain,
+        logo: '/noon-logo.png'
+      },
+      url: `https://${platform.domain}/product/${Math.random().toString(36).substring(2, 12)}/${product.title.toLowerCase().replace(/\s+/g, '-')}`,
+      availability: Math.random() > 0.15 ? 'in_stock' as const : 'limited_stock' as const,
+      shipping: {
+        free: Math.random() > 0.4,
+        estimatedDays: `${Math.floor(Math.random() * 2) + 1}-${Math.floor(Math.random() * 2) + 2} days`
+      },
+      relevanceScore: 80 + Math.random() * 15,
+      authenticityScore: 88 + Math.random() * 12,
+      priceCompetitiveness: 70 + Math.random() * 30,
+      currency: this.country.currency,
+      currencySymbol: this.country.currencySymbol,
+      scrapedAt: new Date().toISOString()
+    }));
   }
 
-  private createRealisticJumiaData(platform: any): LiveProduct[] {
+  private getProductVariationsForQuery(query: string) {
+    // Gaming laptops
+    if (query.includes('gaming') && query.includes('laptop')) {
+      return [
+        { title: 'ASUS ROG Strix G15 Gaming Laptop RTX 4060', basePrice: 1200, brand: 'ASUS', image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400' },
+        { title: 'Lenovo Legion 5 Pro Gaming Laptop RTX 4070', basePrice: 1500, brand: 'Lenovo', image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400' },
+        { title: 'MSI Gaming Laptop GF63 Intel Core i7', basePrice: 900, brand: 'MSI', image: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400' },
+        { title: 'HP Victus Gaming Laptop AMD Ryzen 7', basePrice: 800, brand: 'HP', image: 'https://images.unsplash.com/photo-1588472505849-0c6445e5b93b?w=400' },
+        { title: 'Acer Nitro 5 Gaming Laptop RTX 3050', basePrice: 700, brand: 'Acer', image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400' }
+      ];
+    }
+    
+    // Laptops
+    if (query.includes('laptop')) {
+      return [
+        { title: 'MacBook Pro 14-inch M3 Pro 512GB Space Black', basePrice: 1999, brand: 'Apple', image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400' },
+        { title: 'Dell XPS 13 Intel Core i7 1TB SSD', basePrice: 1400, brand: 'Dell', image: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400' },
+        { title: 'HP Spectre x360 14-inch 2-in-1 Laptop', basePrice: 1200, brand: 'HP', image: 'https://images.unsplash.com/photo-1588472505849-0c6445e5b93b?w=400' },
+        { title: 'Lenovo ThinkPad X1 Carbon 11th Gen', basePrice: 1600, brand: 'Lenovo', image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400' },
+        { title: 'ASUS ZenBook 14 OLED Ultra Slim Laptop', basePrice: 800, brand: 'ASUS', image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400' }
+      ];
+    }
+
+    // iPhones
+    if (query.includes('iphone')) {
+      return [
+        { title: 'iPhone 15 Pro Max 256GB Natural Titanium', basePrice: 1199, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' },
+        { title: 'iPhone 15 Pro 128GB Blue Titanium', basePrice: 999, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' },
+        { title: 'iPhone 15 Plus 256GB Pink', basePrice: 899, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' },
+        { title: 'iPhone 15 128GB Black', basePrice: 799, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' },
+        { title: 'iPhone 14 Pro Max 256GB Deep Purple', basePrice: 1099, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' }
+      ];
+    }
+
+    // Samsung phones
+    if (query.includes('samsung') || query.includes('galaxy')) {
+      return [
+        { title: 'Samsung Galaxy S24 Ultra 512GB Titanium Black', basePrice: 1200, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' },
+        { title: 'Samsung Galaxy S24+ 256GB Marble Gray', basePrice: 999, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' },
+        { title: 'Samsung Galaxy S24 128GB Onyx Black', basePrice: 799, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' },
+        { title: 'Samsung Galaxy Z Fold6 512GB Pink', basePrice: 1899, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' },
+        { title: 'Samsung Galaxy A55 5G 256GB Blue', basePrice: 449, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' }
+      ];
+    }
+
+    // Default products for other searches
+    return [
+      { title: 'iPhone 15 Pro Max 256GB Natural Titanium', basePrice: 1199, brand: 'Apple', image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400' },
+      { title: 'Samsung Galaxy S24 Ultra 512GB Titanium Black', basePrice: 999, brand: 'Samsung', image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400' },
+      { title: 'MacBook Pro 14-inch M3 Pro 512GB', basePrice: 1999, brand: 'Apple', image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400' },
+      { title: 'ASUS ROG Strix Gaming Laptop', basePrice: 1200, brand: 'ASUS', image: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400' }
+    ];
+  }
+
+  private createRealisticJumiaData(platform: any, query: string): LiveProduct[] {
     return [];
   }
 
-  private createRealisticWalmartData(platform: any): LiveProduct[] {
+  private createRealisticWalmartData(platform: any, query: string): LiveProduct[] {
     return [];
   }
 
-  private createRealisticArgosData(platform: any): LiveProduct[] {
+  private createRealisticArgosData(platform: any, query: string): LiveProduct[] {
     return [];
   }
 }
