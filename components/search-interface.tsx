@@ -179,19 +179,12 @@ export default function SearchInterface() {
     } else {
       addToFavorites({
         id: product.id,
-        title: product.name,
+        title: product.title,
         price: product.price,
         currency: product.currency,
-        currencySymbol: currentCountry?.currencySymbol || '$',
+        currencySymbol: product.currencySymbol,
         image: product.image,
-        platform: {
-          id: product.platform.toLowerCase().replace(/\s+/g, '-'),
-          name: product.platform,
-          domain: product.platform.toLowerCase().includes('amazon') ? 'amazon' : 
-                  product.platform.toLowerCase().includes('noon') ? 'noon' : 
-                  product.platform.toLowerCase().includes('jumia') ? 'jumia' : 
-                  product.platform.toLowerCase().includes('walmart') ? 'walmart' : 'other'
-        },
+        platform: product.platform,
         url: product.url,
         dateAdded: new Date().toISOString()
       });
@@ -351,7 +344,7 @@ export default function SearchInterface() {
                     <div className="relative">
                       <img
                         src={product.image}
-                        alt={product.name}
+                        alt={product.title}
                         className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
@@ -370,11 +363,12 @@ export default function SearchInterface() {
                       </button>
                       <div className="absolute top-3 left-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          product.stock === 'In Stock' ? 'bg-green-100 text-green-800' :
-                          product.stock === 'Limited Stock' ? 'bg-yellow-100 text-yellow-800' :
+                          product.availability === 'in_stock' ? 'bg-green-100 text-green-800' :
+                          product.availability === 'limited_stock' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }`}>
-                          {product.stock}
+                          {product.availability === 'in_stock' ? 'In Stock' : 
+                           product.availability === 'limited_stock' ? 'Limited Stock' : 'Out of Stock'}
                         </span>
                       </div>
                     </div>
