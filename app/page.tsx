@@ -1,3 +1,4 @@
+// ShopScout AI - E-commerce Price Comparison Platform
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
