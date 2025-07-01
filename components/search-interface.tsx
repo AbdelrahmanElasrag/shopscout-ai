@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { analyzeSearchQuery, popularCategories } from '@/lib/search-engine';
 import RealSearchEngine, { RealProduct, SearchFilters } from '@/lib/real-search-engine';
-import { countries } from '@/lib/countries';
+import { popularCategories } from '@/lib/search-engine';
 import { useAuth } from '@/lib/auth-context';
 import { useFavorites } from '@/lib/favorites-context';
 
@@ -391,27 +390,27 @@ export default function SearchInterface() {
                             target.src = 'https://via.placeholder.com/20x20';
                           }}
                         />
-                        <span className="text-xs text-blue-600 font-medium">{product.platform}</span>
+                        <span className="text-xs text-blue-600 font-medium">{product.platform.name}</span>
                       </div>
 
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.title}</h3>
 
                       <div className="flex items-center gap-2 mb-3">
                         <div className="flex items-center">
                           <span className="text-yellow-400">★</span>
-                          <span className="ml-1 text-sm font-medium">{product.rating}</span>
+                          <span className="ml-1 text-sm font-medium">{product.rating.toFixed(1)}</span>
                         </div>
-                        <span className="text-sm text-gray-500">({product.reviews.toLocaleString()})</span>
+                        <span className="text-sm text-gray-500">({product.reviewCount.toLocaleString()})</span>
                       </div>
 
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-2xl font-bold text-green-600">
-                          {product.price.toLocaleString()}{currentCountry?.currencySymbol || '$'}
+                          {product.price.toLocaleString()}{product.currencySymbol}
                         </span>
                         {product.originalPrice && (
                           <>
                             <span className="text-sm text-gray-500 line-through">
-                              {product.originalPrice.toLocaleString()}{currentCountry?.currencySymbol || '$'}
+                              {product.originalPrice.toLocaleString()}{product.currencySymbol}
                             </span>
                             <span className="text-sm text-red-600 font-medium">{product.discount}</span>
                           </>
@@ -424,7 +423,7 @@ export default function SearchInterface() {
                         rel="noopener noreferrer"
                         className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-center block"
                       >
-                        View on {product.platform} →
+                        View on {product.platform.name} →
                       </a>
                     </div>
                   </div>
