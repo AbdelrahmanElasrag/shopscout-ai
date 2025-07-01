@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent;
+  }
+  
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer;
+  }
+  
+  .search-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .price-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .loading-dots {
+    @apply inline-flex space-x-1;
+  }
+  
+  .loading-dots div {
+    @apply w-2 h-2 bg-primary rounded-full animate-bounce;
+  }
+  
+  .loading-dots div:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  
+  .loading-dots div:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  
+  .loading-dots div:nth-child(3) {
+    animation-delay: 300ms;
+  }
+  
+  .hero-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .feature-card {
+    @apply p-6 rounded-xl bg-white shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300;
+  }
+  
+  .platform-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ring-1 ring-inset;
+  }
+  
+  .platform-amazon {
+    @apply bg-orange-50 text-orange-700 ring-orange-600/20;
+  }
+  
+  .platform-aliexpress {
+    @apply bg-red-50 text-red-700 ring-red-600/20;
+  }
+  
+  .platform-noon {
+    @apply bg-yellow-50 text-yellow-700 ring-yellow-600/20;
+  }
+  
+  .trust-score {
+    @apply inline-flex items-center gap-1 text-sm font-medium;
+  }
+  
+  .trust-high {
+    @apply text-green-600;
+  }
+  
+  .trust-medium {
+    @apply text-yellow-600;
+  }
+  
+  .trust-low {
+    @apply text-red-600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+} 
