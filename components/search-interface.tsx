@@ -376,8 +376,8 @@ export default function SearchInterface() {
                     <div className="p-6">
                       <div className="flex items-center gap-2 mb-2">
                         <img
-                          src={PLATFORM_LOGOS[product.platform] || 'https://via.placeholder.com/20x20'}
-                          alt={product.platform}
+                          src={PLATFORM_LOGOS[product.platform.name] || product.platform.logo}
+                          alt={product.platform.name}
                           className="w-5 h-5 object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
