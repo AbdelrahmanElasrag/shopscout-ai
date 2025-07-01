@@ -95,6 +95,8 @@ export default function SearchInterface() {
     if (!currentCountry) return [];
     
     try {
+      // For now, use sample data until API keys are configured
+      // In production, pass actual API keys here
       const liveScraper = new LiveProductScraper(currentCountry);
       const result = await liveScraper.searchLiveProducts(query, count);
       
