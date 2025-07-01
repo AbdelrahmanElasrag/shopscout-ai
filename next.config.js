@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-    serverActions: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -11,17 +7,6 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    domains: [
-      'm.media-amazon.com',
-      'images-na.ssl-images-amazon.com',
-      'ae01.alicdn.com',
-      'sc04.alicdn.com',
-      'noon.com',
-      's3.amazonaws.com',
-    ],
-  },
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   async headers() {
     return [
@@ -34,17 +19,6 @@ const nextConfig = {
         ],
       },
     ];
-  },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-    }
-    return config;
   },
 };
 
