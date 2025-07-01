@@ -148,7 +148,7 @@ export default function SearchInterface() {
       .filter(product => {
         if (product.price < filters.priceRange.min || product.price > filters.priceRange.max) return false;
         if (product.rating < filters.minRating) return false;
-        if (filters.inStock && product.stock !== 'In Stock') return false;
+        if (filters.inStock && product.availability !== 'in_stock') return false;
         return true;
       })
       .sort((a, b) => {
@@ -156,7 +156,7 @@ export default function SearchInterface() {
           case 'price-low': return a.price - b.price;
           case 'price-high': return b.price - a.price;
           case 'rating': return b.rating - a.rating;
-          case 'reviews': return b.reviews - a.reviews;
+          case 'reviews': return b.reviewCount - a.reviewCount;
           default: return 0; // relevance (keep original order)
         }
       });
