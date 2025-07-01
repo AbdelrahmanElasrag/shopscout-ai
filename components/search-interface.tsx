@@ -95,9 +95,15 @@ export default function SearchInterface() {
     if (!currentCountry) return [];
     
     try {
-      // For now, use sample data until API keys are configured
-      // In production, pass actual API keys here
-      const liveScraper = new LiveProductScraper(currentCountry);
+      // API Keys Configuration - Replace YOUR_API_KEY with your actual key
+      const apiKeys = {
+        scrapingBee: 'YOUR_API_KEY_HERE', // Put your ScrapingBee API key here
+        scraperApi: undefined,
+        brightData: undefined,
+        zenRows: undefined,
+      };
+      
+      const liveScraper = new LiveProductScraper(currentCountry, apiKeys);
       const result = await liveScraper.searchLiveProducts(query, count);
       
       // Apply local filters to the live results
