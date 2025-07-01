@@ -73,6 +73,10 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
     }
   };
 
+  const getProductImage = (index: number): string => {
+    return productImages[index % productImages.length] || productImages[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
+  };
+
   const generateMockProducts = (startIndex: number = 0, count: number = 6): Product[] => {
     if (!selectedCountry) return [];
 
@@ -89,12 +93,12 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
           originalPrice: Math.random() > 0.3 ? Math.floor(Math.random() * 1200) + 150 : undefined,
           currency: selectedCountry.currency,
           currencySymbol: selectedCountry.currencySymbol,
-                     image: productImages[productIndex % productImages.length] || productImages[0],
+          image: getProductImage(productIndex),
           rating: 3.5 + Math.random() * 1.5,
           reviewCount: Math.floor(Math.random() * 2000) + 100,
           platform,
           url: generateProductUrl(platform, productId, productTitle),
-          availability: ['in-stock', 'in-stock', 'in-stock', 'limited', 'out-of-stock'][Math.floor(Math.random() * 5)] as any
+          availability: ['in-stock', 'in-stock', 'in-stock', 'limited', 'out-of-stock'][Math.floor(Math.random() * 5)] as 'in-stock' | 'out-of-stock' | 'limited'
         };
       })
     ).sort((a, b) => a.price - b.price);
