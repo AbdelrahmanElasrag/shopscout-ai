@@ -44,7 +44,7 @@ const PLATFORM_LOGOS: Record<string, string> = {
 
 export default function SearchInterface() {
   const { user, selectedCountry } = useAuth();
-  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { favorites, addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -231,18 +231,29 @@ export default function SearchInterface() {
     }
   };
 
-  const isFavorite = (productId: string) => favorites.includes(productId);
+
 
   const toggleFavorite = (product: Product) => {
     if (isFavorite(product.id)) {
       removeFromFavorites(product.id);
     } else {
-      addToFavorites(product.id, {
-        name: product.name,
+      addToFavorites({
+        id: product.id,
+        title: product.name,
         price: product.price,
+        currency: product.currency,
+        currencySymbol: currentCountry?.currencySymbol || '$',
         image: product.image,
-        platform: product.platform,
-        currency: product.currency
+        platform: {
+          id: product.platform.toLowerCase().replace(/\s+/g, '-'),
+          name: product.platform,
+          domain: product.platform.toLowerCase().includes('amazon') ? 'amazon' : 
+                  product.platform.toLowerCase().includes('noon') ? 'noon' : 
+                  product.platform.toLowerCase().includes('jumia') ? 'jumia' : 
+                  product.platform.toLowerCase().includes('walmart') ? 'walmart' : 'other'
+        },
+        url: product.url,
+        dateAdded: new Date().toISOString()
       });
     }
   };
