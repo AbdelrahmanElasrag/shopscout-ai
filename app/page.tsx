@@ -1,9 +1,21 @@
-// ShopScout AI - E-commerce Price Comparison Platform
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '../lib/auth-context';
+import AuthModal from '../components/auth-modal';
+import SearchInterface from '../components/search-interface';
+
 export default function HomePage() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { user, selectedCountry, signOut } = useAuth();
+
+  const openAuthModal = () => setIsAuthModalOpen(true);
+  const closeAuthModal = () => setIsAuthModalOpen(false);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
@@ -13,11 +25,34 @@ export default function HomePage() {
               ShopScout AI
             </span>
           </div>
-          <nav className="hidden md:flex space-x-6">
-            <a href="#" className="text-gray-700 hover:text-blue-600">Search</a>
-            <a href="#" className="text-gray-700 hover:text-blue-600">Categories</a>
-            <a href="#" className="text-gray-700 hover:text-blue-600">Deals</a>
-          </nav>
+          
+          <div className="flex items-center space-x-4">
+            {user && selectedCountry && (
+              <div className="flex items-center space-x-3 text-sm">
+                <span className="text-gray-600">
+                  {selectedCountry.flag} {selectedCountry.name} ({selectedCountry.currency})
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-600">Hi, {user.name}!</span>
+              </div>
+            )}
+            
+            {user ? (
+              <button
+                onClick={signOut}
+                className="text-gray-700 hover:text-red-600 font-medium"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={openAuthModal}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+              >
+                Get Started
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -29,94 +64,123 @@ export default function HomePage() {
             Across All Platforms
           </h1>
           <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-            AI-powered price comparison that searches Amazon, AliExpress, and Noon 
+            AI-powered price comparison that searches your local platforms 
+            {selectedCountry ? ` in ${selectedCountry.name}` : ''} 
             to find you the most reliable and cheapest products in seconds.
           </p>
           
-          {/* Search Box */}
-          <div className="max-w-2xl mx-auto mb-8">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search for products (e.g., iPhone 15, MacBook, headphones)..."
-                className="w-full pl-6 pr-32 py-4 text-lg bg-white/95 border-0 rounded-2xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-yellow-300/50"
-              />
-              <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-semibold px-8 py-3 rounded-xl">
-                Search AI
-              </button>
-            </div>
-          </div>
+          {/* Main Search Interface */}
+          <SearchInterface onAuthRequired={openAuthModal} />
 
-          {/* Popular Searches */}
-          <div className="mb-12">
-            <p className="text-blue-100 mb-4">Popular searches:</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {['iPhone 15 Pro', 'MacBook Air M3', 'Nike Air Jordan', 'Sony WH-1000XM5'].map((search) => (
-                <button
-                  key={search}
-                  className="px-6 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full hover:bg-white/30 transition-all duration-200"
-                >
-                  {search}
-                </button>
+          {/* Popular Searches - Only show if user is not logged in */}
+          {!user && (
+            <div className="mb-12">
+              <p className="text-blue-100 mb-4">Popular searches:</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {['iPhone 15 Pro', 'MacBook Air M3', 'Nike Air Jordan', 'Sony WH-1000XM5'].map((search) => (
+                  <button
+                    key={search}
+                    onClick={openAuthModal}
+                    className="px-6 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full hover:bg-white/30 transition-all duration-200"
+                  >
+                    {search}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Features - Only show if user is not logged in */}
+          {!user && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="flex items-center justify-center space-x-3 text-white/90">
+                <div className="p-3 bg-white/20 rounded-full">
+                  <span className="text-2xl">🤖</span>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold">AI-Powered</h3>
+                  <p className="text-sm text-blue-100">Smart product matching</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center space-x-3 text-white/90">
+                <div className="p-3 bg-white/20 rounded-full">
+                  <span className="text-2xl">🌍</span>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold">Global & Local</h3>
+                  <p className="text-sm text-blue-100">Regional platforms & currency</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center space-x-3 text-white/90">
+                <div className="p-3 bg-white/20 rounded-full">
+                  <span className="text-2xl">🛡️</span>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold">Verified Sellers</h3>
+                  <p className="text-sm text-blue-100">Trusted & authentic</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Platform Showcase Section - Only show if user is logged in */}
+      {user && selectedCountry && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">
+              Shopping in {selectedCountry.flag} {selectedCountry.name}
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              We search across {selectedCountry.platforms.length} trusted platforms to find you the best deals in {selectedCountry.currency}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {selectedCountry.platforms.map((platform) => (
+                <div key={platform.id} className="p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow">
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg mx-auto mb-4 flex items-center justify-center">
+                    <span className="text-2xl">🛒</span>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{platform.name}</h3>
+                  <p className="text-gray-600 text-sm mb-3">{platform.domain}</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs ${
+                    platform.category === 'global' ? 'bg-blue-100 text-blue-800' :
+                    platform.category === 'regional' ? 'bg-green-100 text-green-800' :
+                    'bg-purple-100 text-purple-800'
+                  }`}>
+                    {platform.category}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
+        </section>
+      )}
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="flex items-center justify-center space-x-3 text-white/90">
-              <div className="p-3 bg-white/20 rounded-full">
-                <span className="text-2xl">🤖</span>
+      {/* Benefits Section - Only show if user is not logged in */}
+      {!user && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">Why Choose ShopScout AI?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="p-6 bg-gray-50 rounded-xl">
+                <h3 className="text-xl font-semibold mb-4">Multi-Platform Search</h3>
+                <p className="text-gray-600">Search local and international platforms simultaneously</p>
               </div>
-              <div className="text-left">
-                <h3 className="font-semibold">AI-Powered</h3>
-                <p className="text-sm text-blue-100">Smart product matching</p>
+              <div className="p-6 bg-gray-50 rounded-xl">
+                <h3 className="text-xl font-semibold mb-4">Local Currency</h3>
+                <p className="text-gray-600">See prices in your local currency with real-time conversion</p>
               </div>
-            </div>
-            
-            <div className="flex items-center justify-center space-x-3 text-white/90">
-              <div className="p-3 bg-white/20 rounded-full">
-                <span className="text-2xl">📈</span>
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold">Real-time Prices</h3>
-                <p className="text-sm text-blue-100">Always up-to-date</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-center space-x-3 text-white/90">
-              <div className="p-3 bg-white/20 rounded-full">
-                <span className="text-2xl">🛡️</span>
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold">Verified Sellers</h3>
-                <p className="text-sm text-blue-100">Trusted & authentic</p>
+              <div className="p-6 bg-gray-50 rounded-xl">
+                <h3 className="text-xl font-semibold mb-4">Regional Platforms</h3>
+                <p className="text-gray-600">Access platforms specific to your country and region</p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Why Choose ShopScout AI?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 bg-gray-50 rounded-xl">
-              <h3 className="text-xl font-semibold mb-4">Multi-Platform Search</h3>
-              <p className="text-gray-600">Search Amazon, AliExpress, and Noon simultaneously</p>
-            </div>
-            <div className="p-6 bg-gray-50 rounded-xl">
-              <h3 className="text-xl font-semibold mb-4">Price Tracking</h3>
-              <p className="text-gray-600">Get alerts when prices drop on your favorite items</p>
-            </div>
-            <div className="p-6 bg-gray-50 rounded-xl">
-              <h3 className="text-xl font-semibold mb-4">Trust Scores</h3>
-              <p className="text-gray-600">AI-verified seller reliability and product authenticity</p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
@@ -128,13 +192,16 @@ export default function HomePage() {
               </div>
               <span className="text-xl font-bold">ShopScout AI</span>
             </div>
-            <p className="text-gray-400">Save money, shop smart with AI-powered price comparison!</p>
+            <p className="text-gray-400">Save money, shop smart with AI-powered global price comparison!</p>
           </div>
           <div className="border-t border-gray-800 pt-8">
             <p>&copy; 2024 ShopScout AI. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </main>
   );
 }
