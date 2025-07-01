@@ -223,9 +223,12 @@ export default function SearchInterface() {
   };
 
   const handleCategoryClick = (keywords: string[]) => {
+    if (keywords.length === 0) return;
     const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
-    setQuery(randomKeyword);
-    handleSearch(randomKeyword);
+    if (randomKeyword) {
+      setQuery(randomKeyword);
+      handleSearch(randomKeyword);
+    }
   };
 
   const isFavorite = (productId: string) => favorites.includes(productId);
