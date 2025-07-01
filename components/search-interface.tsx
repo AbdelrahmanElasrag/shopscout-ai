@@ -1,413 +1,517 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '../lib/auth-context';
-import { useFavorites } from '../lib/favorites-context';
-import { Platform } from '../lib/countries';
-import { analyzeSearchQuery, generateRelevantProductTitle, brandsByCategory } from '../lib/search-engine';
+import React, { useState, useEffect } from 'react';
+import { analyzeSearchQuery, popularCategories } from '@/lib/search-engine';
+import { countries } from '@/lib/countries';
+import { useAuth } from '@/lib/auth-context';
+import { useFavorites } from '@/lib/favorites-context';
 
 interface Product {
   id: string;
-  title: string;
+  name: string;
   price: number;
   originalPrice?: number;
-  currency: string;
-  currencySymbol: string;
-  image: string;
+  discount?: string;
   rating: number;
-  reviewCount: number;
-  platform: Platform;
+  reviews: number;
+  image: string;
+  platform: string;
   url: string;
-  availability: 'in-stock' | 'out-of-stock' | 'limited';
+  stock: 'In Stock' | 'Out of Stock' | 'Limited Stock';
+  currency: string;
 }
 
-interface SearchInterfaceProps {
-  onAuthRequired: () => void;
+interface Filters {
+  priceRange: { min: number; max: number };
+  minRating: number;
+  inStock: boolean;
+  sortBy: 'relevance' | 'price-low' | 'price-high' | 'rating' | 'reviews';
 }
 
-export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps) {
+const PLATFORM_LOGOS: Record<string, string> = {
+  'Amazon Egypt': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Noon Egypt': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
+  'Jumia Egypt': 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Jumia_Logo.png',
+  'Amazon UAE': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Noon UAE': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
+  'Amazon Saudi': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Noon Saudi': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
+  'Amazon US': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Walmart US': 'https://upload.wikimedia.org/wikipedia/commons/c/ca/Walmart_logo.svg',
+  'Amazon UK': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Argos UK': 'https://logos-world.net/wp-content/uploads/2020/12/Argos-Logo.png'
+};
+
+export default function SearchInterface() {
+  const { user } = useAuth();
+  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
   const [query, setQuery] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [canLoadMore, setCanLoadMore] = useState(false);
-  
-  const { user, selectedCountry } = useAuth();
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const [results, setResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<Filters>({
+    priceRange: { min: 0, max: 10000 },
+    minRating: 0,
+    inStock: false,
+    sortBy: 'relevance'
+  });
 
-  // Array of product images for realistic appearance
-  const productImages = [
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=300&h=300&fit=crop'
-  ];
+  const currentCountry = user ? countries.find(c => c.code === user.country) : null;
 
-  const generateProductUrl = (platform: Platform, productId: string, productTitle: string) => {
-    // Generate realistic product URLs for each platform
-    const slugTitle = productTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
+  // Apply filters when filter settings change
+  useEffect(() => {
+    if (results.length > 0) {
+      const filteredResults = applyFilters(results);
+      if (filteredResults.length !== results.length) {
+        setResults(filteredResults);
+        setTotalResults(filteredResults.length);
+      }
+    }
+  }, [filters]);
+
+  const generateSearchURL = (platform: string, query: string): string => {
+    const encodedQuery = encodeURIComponent(query);
     
-    switch (platform.id.split('_')[0]) {
-      case 'amazon':
-        return `${platform.searchUrl.replace('/s?k=', '')}/${slugTitle}/dp/${productId}`;
-      case 'noon':
-        return `${platform.domain}/product/${productId}/${slugTitle}`;
-      case 'jumia':
-        return `${platform.domain}/product/${productId}/${slugTitle}`;
-      case 'walmart':
-        return `${platform.domain}/ip/${slugTitle}/${productId}`;
-      case 'target':
-        return `${platform.domain}/p/${slugTitle}/-/A-${productId}`;
-      case 'carrefour':
-        return `${platform.domain}/product/${productId}`;
-      case 'extra':
-        return `${platform.domain}/en/product/${productId}`;
-      case 'argos':
-        return `${platform.domain}/product/${productId}`;
+    // Generate actual search URLs that work
+    switch (platform) {
+      case 'Amazon Egypt':
+        return `https://www.amazon.eg/s?k=${encodedQuery}&ref=nb_sb_noss`;
+      case 'Noon Egypt':
+        return `https://www.noon.com/egypt-en/search/?q=${encodedQuery}`;
+      case 'Jumia Egypt':
+        return `https://www.jumia.com.eg/catalog/?q=${encodedQuery}`;
+      case 'Amazon UAE':
+        return `https://www.amazon.ae/s?k=${encodedQuery}&ref=nb_sb_noss`;
+      case 'Noon UAE':
+        return `https://www.noon.com/uae-en/search/?q=${encodedQuery}`;
+      case 'Amazon Saudi':
+        return `https://www.amazon.sa/s?k=${encodedQuery}&ref=nb_sb_noss`;
+      case 'Noon Saudi':
+        return `https://www.noon.com/saudi-en/search/?q=${encodedQuery}`;
+      case 'Amazon US':
+        return `https://www.amazon.com/s?k=${encodedQuery}&ref=nb_sb_noss`;
+      case 'Walmart US':
+        return `https://www.walmart.com/search?q=${encodedQuery}`;
+      case 'Amazon UK':
+        return `https://www.amazon.co.uk/s?k=${encodedQuery}&ref=nb_sb_noss`;
+      case 'Argos UK':
+        return `https://www.argos.co.uk/search/${encodedQuery}/`;
       default:
-        return `${platform.searchUrl}${encodeURIComponent(productTitle)}`;
+        return '#';
     }
   };
 
-  const getProductImage = (index: number): string => {
-    return productImages[index % productImages.length] || productImages[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
-  };
+  function generateMockProducts(query: string, count: number): Product[] {
+    const analysis = analyzeSearchQuery(query);
+    const platforms = currentCountry?.platforms || [];
+    const currency = currentCountry?.currency || 'USD';
+    const currencySymbol = currentCountry?.currencySymbol || '$';
 
-  const generateSmartProducts = (startIndex: number = 0, count: number = 6): Product[] => {
-    if (!selectedCountry || !query.trim()) return [];
+    const stockOptions: Product['stock'][] = ['In Stock', 'Out of Stock', 'Limited Stock'];
+    const products: Product[] = [];
 
-    // Analyze the search query to get relevant category and images
-    const searchResult = analyzeSearchQuery(query);
-    const brands = brandsByCategory[searchResult.category] || brandsByCategory.general || ['Premium', 'Elite', 'Professional'];
-
-    return selectedCountry.platforms.flatMap((platform, platformIndex) => 
-      Array.from({ length: Math.ceil(count / selectedCountry.platforms.length) }, (_, index) => {
-        const productIndex = startIndex + platformIndex * Math.ceil(count / selectedCountry.platforms.length) + index;
-        const productId = `PROD${String(productIndex + 1000).padStart(8, '0')}`;
-        
-                 // Generate relevant product title based on search query
-         const variation = searchResult.productVariations[productIndex % searchResult.productVariations.length] || 'Standard';
-         const productTitle = generateRelevantProductTitle(query || 'Product', variation, brands);
-        
-        // Use category-appropriate pricing
-        const basePrice = searchResult.basePrice.min + Math.random() * (searchResult.basePrice.max - searchResult.basePrice.min);
-        const price = Math.floor(basePrice);
-        const originalPrice = Math.random() > 0.4 ? Math.floor(price * (1.2 + Math.random() * 0.5)) : undefined;
-        
-        return {
-          id: `${platform.id}_${productId}`,
-          title: productTitle,
-          price,
-          originalPrice,
-          currency: selectedCountry.currency,
-          currencySymbol: selectedCountry.currencySymbol,
-          image: searchResult.relevantImages[productIndex % searchResult.relevantImages.length] || searchResult.relevantImages[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop',
-          rating: 3.5 + Math.random() * 1.5,
-          reviewCount: Math.floor(Math.random() * 2000) + 100,
-          platform,
-          url: generateProductUrl(platform, productId, productTitle),
-          availability: ['in-stock', 'in-stock', 'in-stock', 'limited', 'out-of-stock'][Math.floor(Math.random() * 5)] as 'in-stock' | 'out-of-stock' | 'limited'
-        };
-      })
-    ).slice(0, count).sort((a, b) => a.price - b.price);
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user || !selectedCountry) {
-      onAuthRequired();
-      return;
-    }
-
-    if (!query.trim()) return;
-
-    setIsSearching(true);
-    setHasSearched(true);
-    setProducts([]);
-
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    for (let i = 0; i < count; i++) {
+      const platformIndex = i % platforms.length;
+      const platform = platforms[platformIndex];
       
-      const newProducts = generateSmartProducts(0, 9); // Start with 9 products
-      setProducts(newProducts);
-      setCanLoadMore(true);
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setIsSearching(false);
+      // Skip if platform is undefined
+      if (!platform) continue;
+      
+      const variation = analysis.productVariations[i % analysis.productVariations.length] || 'Standard';
+      const brand = analysis.brands[i % analysis.brands.length] || 'Premium';
+      
+      // Generate clean product title
+      let productName;
+      if (analysis.category === 'laptop' && query.toLowerCase().includes('legion')) {
+        // Special handling for Legion laptops - only use Lenovo
+        productName = `Lenovo Legion 5 Pro ${variation}`;
+      } else {
+        productName = `${brand} ${query} ${variation}`.replace(/\s+/g, ' ').trim();
+      }
+
+      const basePrice = Math.floor(
+        Math.random() * (analysis.basePrice.max - analysis.basePrice.min) + analysis.basePrice.min
+      );
+      
+      const hasDiscount = Math.random() < 0.4;
+      const originalPrice = hasDiscount ? Math.floor(basePrice * (1 + Math.random() * 0.5)) : undefined;
+      const discount = hasDiscount ? `-${Math.floor(((originalPrice! - basePrice) / originalPrice!) * 100)}%` : undefined;
+      
+      const rating = Math.round((3.5 + Math.random() * 1.5) * 10) / 10;
+      const reviews = Math.floor(Math.random() * 2000) + 50;
+      const stock = stockOptions[Math.floor(Math.random() * stockOptions.length)] || 'In Stock';
+      
+      const imageIndex = i % analysis.relevantImages.length;
+      const image = analysis.relevantImages[imageIndex] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
+
+      products.push({
+        id: `${platform.name.replace(/\s+/g, '-').toLowerCase()}-${i + 1}`,
+        name: productName,
+        price: basePrice,
+        originalPrice,
+        discount,
+        rating,
+        reviews,
+        image: image + `&t=${Date.now()}-${i}`, // Add timestamp to make images unique
+        platform: platform.name,
+        url: generateSearchURL(platform.name, query),
+        stock,
+        currency
+      });
     }
-  };
 
-  const handleLoadMore = async () => {
-    if (!canLoadMore || isLoadingMore) return;
+    return products;
+  }
 
-    setIsLoadingMore(true);
+  const handleSearch = async (searchQuery: string = query) => {
+    if (!searchQuery.trim()) return;
     
+    setLoading(true);
     try {
-      // Simulate API call for more products
+      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const moreProducts = generateSmartProducts(products.length, 6);
-      setProducts(prev => [...prev, ...moreProducts]);
+      const mockProducts = generateMockProducts(searchQuery, 9);
+      const filteredProducts = applyFilters(mockProducts);
       
-      // Simulate that we can only load more if we have less than 30 products
-      if (products.length + moreProducts.length >= 30) {
-        setCanLoadMore(false);
-      }
+      setResults(filteredProducts);
+      setTotalResults(filteredProducts.length);
     } catch (error) {
-      console.error('Load more failed:', error);
+      console.error('Search error:', error);
     } finally {
-      setIsLoadingMore(false);
+      setLoading(false);
     }
   };
 
-  const formatPrice = (price: number, symbol: string) => {
-    return `${symbol}${price.toLocaleString()}`;
-  };
-
-  const getAvailabilityColor = (availability: string) => {
-    switch (availability) {
-      case 'in-stock': return 'text-green-600 bg-green-50';
-      case 'limited': return 'text-yellow-600 bg-yellow-50';
-      case 'out-of-stock': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+  const loadMore = async () => {
+    if (results.length >= 30) return; // Max 30 results
+    
+    setLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const newProducts = generateMockProducts(query, 6);
+      const filteredNewProducts = applyFilters(newProducts);
+      
+      setResults(prev => [...prev, ...filteredNewProducts]);
+      setTotalResults(prev => prev + filteredNewProducts.length);
+    } catch (error) {
+      console.error('Load more error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getAvailabilityText = (availability: string) => {
-    switch (availability) {
-      case 'in-stock': return 'In Stock';
-      case 'limited': return 'Limited Stock';
-      case 'out-of-stock': return 'Out of Stock';
-      default: return 'Unknown';
+  const applyFilters = (products: Product[]): Product[] => {
+    return products
+      .filter(product => {
+        if (product.price < filters.priceRange.min || product.price > filters.priceRange.max) return false;
+        if (product.rating < filters.minRating) return false;
+        if (filters.inStock && product.stock !== 'In Stock') return false;
+        return true;
+      })
+      .sort((a, b) => {
+        switch (filters.sortBy) {
+          case 'price-low': return a.price - b.price;
+          case 'price-high': return b.price - a.price;
+          case 'rating': return b.rating - a.rating;
+          case 'reviews': return b.reviews - a.reviews;
+          default: return 0; // relevance (keep original order)
+        }
+      });
+  };
+
+  const handleCategoryClick = (keywords: string[]) => {
+    const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+    setQuery(randomKeyword);
+    handleSearch(randomKeyword);
+  };
+
+  const isFavorite = (productId: string) => favorites.includes(productId);
+
+  const toggleFavorite = (product: Product) => {
+    if (isFavorite(product.id)) {
+      removeFromFavorites(product.id);
+    } else {
+      addToFavorites(product.id, {
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        platform: product.platform,
+        currency: product.currency
+      });
     }
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      {/* Search Form */}
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search products${selectedCountry ? ` in ${selectedCountry.name}` : ''}...`}
-            className="w-full pl-6 pr-32 py-4 text-lg bg-white/95 border-0 rounded-2xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-yellow-300/50"
-          />
-          <button
-            type="submit"
-            disabled={isSearching || !query.trim()}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-semibold px-8 py-3 rounded-xl disabled:opacity-50 transition-all"
-          >
-            {isSearching ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                <span>Searching...</span>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Search Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search for products across multiple platforms..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                />
+                <button
+                  onClick={() => handleSearch()}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  🔍
+                </button>
               </div>
-            ) : (
-              'Search AI'
-            )}
-          </button>
-        </div>
-        
-        {user && selectedCountry && (
-          <div className="mt-4 text-center">
-            <p className="text-blue-100">
-              🔍 Searching in {selectedCountry.flag} {selectedCountry.name} • Currency: {selectedCountry.currency}
-            </p>
-            <div className="flex justify-center gap-2 mt-2">
-              {selectedCountry.platforms.map((platform) => (
-                <span key={platform.id} className="px-3 py-1 bg-white/20 rounded-full text-sm text-white">
-                  {platform.name}
-                </span>
-              ))}
             </div>
-          </div>
-        )}
-      </form>
-
-      {/* Search Results */}
-      {hasSearched && (
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">
-              {isSearching ? 'Searching across platforms...' : `Results for "${query}"`}
-            </h3>
-            {!isSearching && products.length > 0 && (
-              <div className="text-sm text-gray-500">
-                {products.length} products found
-              </div>
-            )}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              ⚙️ Filters
+            </button>
           </div>
 
-          {isSearching ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 h-48 rounded-lg mb-4"></div>
-                  <div className="bg-gray-200 h-4 rounded mb-2"></div>
-                  <div className="bg-gray-200 h-4 rounded w-3/4 mb-2"></div>
-                  <div className="bg-gray-200 h-6 rounded w-1/2"></div>
+          {/* Filters Panel */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.priceRange.min}
+                    onChange={(e) => setFilters((prev: Filters) => ({
+                      ...prev,
+                      priceRange: { ...prev.priceRange, min: Number(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.priceRange.max}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      priceRange: { ...prev.priceRange, max: Number(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                  />
                 </div>
-              ))}
-            </div>
-          ) : products.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <div key={product.id} className="border rounded-xl p-4 hover:shadow-lg transition-shadow group relative">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-600 flex items-center space-x-2">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                        <span>{product.platform.name}</span>
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => {
-                            if (isFavorite(product.id)) {
-                              removeFromFavorites(product.id);
-                            } else {
-                              addToFavorites({
-                                id: product.id,
-                                title: product.title,
-                                price: product.price,
-                                currency: product.currency,
-                                currencySymbol: product.currencySymbol,
-                                image: product.image,
-                                platform: {
-                                  id: product.platform.id,
-                                  name: product.platform.name,
-                                  domain: product.platform.domain
-                                },
-                                url: product.url,
-                                dateAdded: new Date().toISOString()
-                              });
-                            }
-                          }}
-                          className={`p-1 rounded-full transition-colors ${
-                            isFavorite(product.id)
-                              ? 'text-red-500 hover:text-red-600'
-                              : 'text-gray-400 hover:text-red-500'
-                          }`}
-                        >
-                          {isFavorite(product.id) ? '❤️' : '🤍'}
-                        </button>
-                        <span className={`px-2 py-1 rounded-full text-xs ${getAvailabilityColor(product.availability)}`}>
-                          {getAvailabilityText(product.availability)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="relative overflow-hidden rounded-lg mb-3">
-                      <img 
-                        src={product.image} 
-                        alt={product.title}
-                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
-                        }}
-                      />
-                    </div>
-                    
-                    <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm leading-relaxed">
-                      {product.title}
-                    </h4>
-                    
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg font-bold text-green-600">
-                        {formatPrice(product.price, product.currencySymbol)}
-                      </span>
-                      {product.originalPrice && product.originalPrice > product.price && (
-                        <>
-                          <span className="text-sm text-gray-500 line-through">
-                            {formatPrice(product.originalPrice, product.currencySymbol)}
-                          </span>
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                            -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="flex text-yellow-400">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <span key={i}>
-                            {i < Math.floor(product.rating) ? '★' : i < product.rating ? '★' : '☆'}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-600">
-                        {product.rating.toFixed(1)} ({product.reviewCount.toLocaleString()})
-                      </span>
-                    </div>
-                    
-                    <a
-                      href={product.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white text-center py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 text-sm font-medium"
-                    >
-                      View on {product.platform.name} →
-                    </a>
-                  </div>
-                ))}
               </div>
 
-              {/* Load More Button */}
-              {canLoadMore && (
-                <div className="text-center mt-8">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={isLoadingMore}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 font-medium"
-                  >
-                    {isLoadingMore ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Loading More...</span>
-                      </div>
-                    ) : (
-                      'Load More Products'
-                    )}
-                  </button>
-                  <p className="text-gray-500 text-sm mt-2">
-                    Showing {products.length} products
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Min Rating</label>
+                <select
+                  value={filters.minRating}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minRating: Number(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                >
+                  <option value={0}>Any Rating</option>
+                  <option value={3}>3+ Stars</option>
+                  <option value={4}>4+ Stars</option>
+                  <option value={4.5}>4.5+ Stars</option>
+                </select>
+              </div>
 
-              {!canLoadMore && products.length >= 15 && (
-                <div className="text-center mt-8 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600">
-                    🎉 You've seen all available products for "{query}"
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Try a different search term to find more products
-                  </p>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🔍</div>
-              <p className="text-gray-500 text-lg mb-2">No products found for "{query}"</p>
-              <p className="text-gray-400">Try searching for different keywords or check your spelling</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filters.inStock}
+                    onChange={(e) => setFilters(prev => ({ ...prev, inStock: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">In Stock Only</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                <select
+                  value={filters.sortBy}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as Filters['sortBy'] }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                >
+                  <option value="relevance">Relevance</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="reviews">Most Reviews</option>
+                </select>
+              </div>
             </div>
           )}
         </div>
-      )}
+
+        <div className="flex gap-6">
+          {/* Category Sidebar */}
+          <div className="hidden lg:block w-64">
+            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Popular Categories</h3>
+              <div className="space-y-2">
+                {popularCategories.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCategoryClick(category.keywords)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors group"
+                  >
+                    <span className="text-2xl">{category.icon}</span>
+                    <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                      {category.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="flex-1">
+            {totalResults > 0 && (
+              <div className="mb-4 text-sm text-gray-600">
+                Showing {results.length} of {totalResults} results for "{query}"
+                {currentCountry && (
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    {currentCountry.flag} {currentCountry.name}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {loading && results.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Searching across platforms...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {results.map((product) => (
+                  <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
+                    <div className="relative">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop';
+                        }}
+                      />
+                      <button
+                        onClick={() => toggleFavorite(product)}
+                        className={`absolute top-3 right-3 p-2 rounded-full ${
+                          isFavorite(product.id) 
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-white/80 text-gray-600 hover:bg-red-500 hover:text-white'
+                        } transition-colors`}
+                      >
+                        ❤️
+                      </button>
+                      <div className="absolute top-3 left-3">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          product.stock === 'In Stock' ? 'bg-green-100 text-green-800' :
+                          product.stock === 'Limited Stock' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {product.stock}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <img
+                          src={PLATFORM_LOGOS[product.platform] || 'https://via.placeholder.com/20x20'}
+                          alt={product.platform}
+                          className="w-5 h-5 object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://via.placeholder.com/20x20';
+                          }}
+                        />
+                        <span className="text-xs text-blue-600 font-medium">{product.platform}</span>
+                      </div>
+
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center">
+                          <span className="text-yellow-400">★</span>
+                          <span className="ml-1 text-sm font-medium">{product.rating}</span>
+                        </div>
+                        <span className="text-sm text-gray-500">({product.reviews.toLocaleString()})</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-2xl font-bold text-green-600">
+                          {product.price.toLocaleString()}{currentCountry?.currencySymbol || '$'}
+                        </span>
+                        {product.originalPrice && (
+                          <>
+                            <span className="text-sm text-gray-500 line-through">
+                              {product.originalPrice.toLocaleString()}{currentCountry?.currencySymbol || '$'}
+                            </span>
+                            <span className="text-sm text-red-600 font-medium">{product.discount}</span>
+                          </>
+                        )}
+                      </div>
+
+                      <a
+                        href={product.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-center block"
+                      >
+                        View on {product.platform} →
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Load More Button */}
+            {results.length > 0 && results.length < 30 && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={loadMore}
+                  disabled={loading}
+                  className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Loading...
+                    </div>
+                  ) : (
+                    'Load More Products'
+                  )}
+                </button>
+              </div>
+            )}
+
+            {results.length === 0 && !loading && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Start Your Search</h3>
+                <p className="text-gray-600 mb-6">
+                  Search for any product and we'll find the best deals across multiple platforms
+                </p>
+                <div className="text-sm text-gray-500">
+                  Try searching for: "iPhone 15", "MacBook Pro", "Nike shoes", or "Gaming laptop"
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 } 

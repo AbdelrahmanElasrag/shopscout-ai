@@ -3,6 +3,7 @@ interface ProductCategory {
   images: string[];
   basePrice: { min: number; max: number };
   variations: string[];
+  specificBrands?: { [key: string]: string[] }; // Specific brand mapping for certain products
 }
 
 interface SearchResult {
@@ -11,6 +12,7 @@ interface SearchResult {
   relevantImages: string[];
   basePrice: { min: number; max: number };
   productVariations: string[];
+  brands: string[];
 }
 
 export const productCategories: Record<string, ProductCategory> = {
@@ -24,10 +26,16 @@ export const productCategories: Record<string, ProductCategory> = {
       'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=300&h=300&fit=crop'
     ],
     basePrice: { min: 200, max: 1500 },
-    variations: ['Pro', 'Pro Max', 'Plus', 'Mini', 'Standard', 'Ultra']
+    variations: ['Pro', 'Pro Max', 'Plus', 'Mini', 'Standard', 'Ultra'],
+    specificBrands: {
+      'iphone': ['Apple'],
+      'galaxy': ['Samsung'],
+      'pixel': ['Google'],
+      'oneplus': ['OnePlus']
+    }
   },
   laptop: {
-    keywords: ['macbook', 'laptop', 'computer', 'dell', 'hp', 'lenovo', 'surface', 'notebook', 'gaming laptop'],
+    keywords: ['macbook', 'laptop', 'computer', 'dell', 'hp', 'lenovo', 'surface', 'notebook', 'gaming laptop', 'legion', 'thinkpad', 'inspiron', 'pavilion'],
     images: [
       'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=300&h=300&fit=crop',
       'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=300&fit=crop',
@@ -36,7 +44,17 @@ export const productCategories: Record<string, ProductCategory> = {
       'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=300&h=300&fit=crop'
     ],
     basePrice: { min: 500, max: 3000 },
-    variations: ['Air', 'Pro', 'Gaming', 'Business', 'Ultrabook', 'Workstation']
+    variations: ['Air', 'Pro', 'Gaming', 'Business', 'Ultrabook', 'Workstation'],
+    specificBrands: {
+      'macbook': ['Apple'],
+      'legion': ['Lenovo'],
+      'thinkpad': ['Lenovo'],
+      'inspiron': ['Dell'],
+      'pavilion': ['HP'],
+      'surface': ['Microsoft'],
+      'gaming': ['ASUS', 'MSI', 'Alienware', 'Lenovo'],
+      'workstation': ['Dell', 'HP', 'Lenovo']
+    }
   },
   headphones: {
     keywords: ['headphones', 'earbuds', 'airpods', 'sony', 'bose', 'audio', 'wireless', 'bluetooth'],
@@ -48,7 +66,12 @@ export const productCategories: Record<string, ProductCategory> = {
       'https://images.unsplash.com/photo-1608156639585-b3ad7189e2d6?w=300&h=300&fit=crop'
     ],
     basePrice: { min: 50, max: 500 },
-    variations: ['Pro', 'Max', 'Studio', 'Wireless', 'Gaming', 'Noise Cancelling']
+    variations: ['Pro', 'Max', 'Studio', 'Wireless', 'Gaming', 'Noise Cancelling'],
+    specificBrands: {
+      'airpods': ['Apple'],
+      'sony': ['Sony'],
+      'bose': ['Bose']
+    }
   },
   watch: {
     keywords: ['watch', 'smartwatch', 'apple watch', 'rolex', 'time', 'wrist', 'fitness tracker'],
@@ -72,7 +95,12 @@ export const productCategories: Record<string, ProductCategory> = {
       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop'
     ],
     basePrice: { min: 80, max: 400 },
-    variations: ['Air', 'Max', 'Pro', 'Sport', 'Classic', 'Limited Edition']
+    variations: ['Air', 'Max', 'Pro', 'Sport', 'Classic', 'Limited Edition'],
+    specificBrands: {
+      'nike': ['Nike'],
+      'adidas': ['Adidas'],
+      'jordan': ['Nike', 'Jordan']
+    }
   },
   clothing: {
     keywords: ['shirt', 'dress', 'pants', 'jacket', 'hoodie', 'clothes', 'fashion', 'clothing'],
@@ -100,6 +128,25 @@ export const productCategories: Record<string, ProductCategory> = {
   }
 };
 
+function getSmartBrands(query: string, category: string): string[] {
+  const lowerQuery = query.toLowerCase();
+  const categoryData = productCategories[category];
+  
+  if (!categoryData) return ['Premium', 'Elite', 'Professional'];
+  
+  // Check for specific brand matches first
+  if (categoryData.specificBrands) {
+    for (const [keyword, brands] of Object.entries(categoryData.specificBrands)) {
+      if (lowerQuery.includes(keyword)) {
+        return brands;
+      }
+    }
+  }
+  
+  // Fallback to category brands
+  return brandsByCategory[category] || brandsByCategory.general || ['Premium', 'Elite', 'Professional'];
+}
+
 export function analyzeSearchQuery(query: string): SearchResult {
   const lowerQuery = query.toLowerCase().trim();
   
@@ -107,12 +154,14 @@ export function analyzeSearchQuery(query: string): SearchResult {
   for (const [categoryName, category] of Object.entries(productCategories)) {
     for (const keyword of category.keywords) {
       if (lowerQuery.includes(keyword)) {
+        const smartBrands = getSmartBrands(query, categoryName);
         return {
           query,
           category: categoryName,
           relevantImages: category.images,
           basePrice: category.basePrice,
-          productVariations: category.variations
+          productVariations: category.variations,
+          brands: smartBrands
         };
       }
     }
@@ -128,13 +177,27 @@ export function analyzeSearchQuery(query: string): SearchResult {
       'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop',
     ],
     basePrice: { min: 50, max: 500 },
-    productVariations: ['Standard', 'Premium', 'Pro', 'Deluxe', 'Ultimate']
+    productVariations: ['Standard', 'Premium', 'Pro', 'Deluxe', 'Ultimate'],
+    brands: ['Premium', 'Elite', 'Professional']
   };
 }
 
 export function generateRelevantProductTitle(query: string, variation: string, brandSuggestions: string[]): string {
   const brand = brandSuggestions[Math.floor(Math.random() * brandSuggestions.length)];
-  return `${brand} ${query} ${variation}`;
+  
+  // Clean up the query to remove redundant brand names
+  let cleanQuery = query;
+  const lowerQuery = query.toLowerCase();
+  
+  // Remove brand name from query if it's already there
+  for (const brandName of brandSuggestions) {
+    if (lowerQuery.includes(brandName.toLowerCase())) {
+      cleanQuery = query.replace(new RegExp(brandName, 'gi'), '').trim();
+      break;
+    }
+  }
+  
+  return `${brand} ${cleanQuery} ${variation}`.replace(/\s+/g, ' ').trim();
 }
 
 export const brandsByCategory: Record<string, string[]> = {
@@ -146,4 +209,18 @@ export const brandsByCategory: Record<string, string[]> = {
   clothing: ['Zara', 'H&M', 'Nike', 'Adidas', 'Tommy Hilfiger', 'Calvin Klein'],
   home: ['IKEA', 'West Elm', 'CB2', 'Pottery Barn', 'Wayfair', 'Ashley'],
   general: ['Premium', 'Elite', 'Professional', 'Advanced', 'Superior', 'Ultimate']
-}; 
+};
+
+// Popular categories for the sidebar
+export const popularCategories = [
+  { name: 'Smartphones & Tablets', icon: '📱', keywords: ['smartphone', 'iphone', 'samsung', 'tablet', 'ipad'] },
+  { name: 'Laptops & Computers', icon: '💻', keywords: ['laptop', 'macbook', 'computer', 'gaming laptop'] },
+  { name: 'Headphones & Audio', icon: '🎧', keywords: ['headphones', 'earbuds', 'speakers', 'airpods'] },
+  { name: 'Smart Watches', icon: '⌚', keywords: ['smartwatch', 'apple watch', 'fitness tracker'] },
+  { name: 'Fashion & Clothing', icon: '👕', keywords: ['clothing', 'shirt', 'dress', 'jacket'] },
+  { name: 'Shoes & Footwear', icon: '👟', keywords: ['shoes', 'sneakers', 'nike', 'adidas'] },
+  { name: 'Home & Kitchen', icon: '🏠', keywords: ['home', 'kitchen', 'furniture', 'appliances'] },
+  { name: 'Gaming', icon: '🎮', keywords: ['gaming', 'console', 'controller', 'gaming laptop'] },
+  { name: 'Beauty & Personal Care', icon: '💄', keywords: ['beauty', 'makeup', 'skincare', 'perfume'] },
+  { name: 'Sports & Fitness', icon: '🏃', keywords: ['fitness', 'sports', 'gym', 'exercise'] }
+]; 
