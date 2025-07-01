@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import RealSearchEngine, { RealProduct, SearchFilters } from '@/lib/real-search-engine';
+import LiveProductScraper, { LiveProduct, LiveSearchResult } from '@/lib/live-scraper';
 import { popularCategories } from '@/lib/search-engine';
 import { useAuth } from '@/lib/auth-context';
 import { useFavorites } from '@/lib/favorites-context';
 
-// Using RealProduct from real-search-engine.ts
-type Product = RealProduct;
+// Using LiveProduct from live-scraper.ts  
+type Product = LiveProduct;
 
 // Using SearchFilters from real-search-engine.ts but with compatible naming
 interface Filters {
@@ -91,22 +91,52 @@ export default function SearchInterface() {
     }
   };
 
-  async function searchRealProducts(query: string, count: number): Promise<Product[]> {
+  async function searchLiveProducts(query: string, count: number): Promise<Product[]> {
     if (!currentCountry) return [];
     
     try {
-      const searchEngine = new RealSearchEngine(currentCountry);
-      const searchFilters: SearchFilters = {
-        priceRange: filters.priceRange,
-        minRating: filters.minRating,
-        inStock: filters.inStock,
-        sortBy: filters.sortBy
-      };
+      const liveScraper = new LiveProductScraper(currentCountry);
+      const result = await liveScraper.searchLiveProducts(query, count);
       
-      const result = await searchEngine.searchProducts(query, searchFilters, count);
-      return result.products;
+      // Apply local filters to the live results
+      let filteredProducts = result.products;
+      
+      if (filters.priceRange.min > 0 || filters.priceRange.max < 100000) {
+        filteredProducts = filteredProducts.filter(product => 
+          product.price >= filters.priceRange.min && product.price <= filters.priceRange.max
+        );
+      }
+      
+      if (filters.minRating > 0) {
+        filteredProducts = filteredProducts.filter(product => product.rating >= filters.minRating);
+      }
+      
+      if (filters.inStock) {
+        filteredProducts = filteredProducts.filter(product => product.availability === 'in_stock');
+      }
+      
+      // Apply sorting
+      switch (filters.sortBy) {
+        case 'price_low':
+          filteredProducts.sort((a, b) => a.price - b.price);
+          break;
+        case 'price_high':
+          filteredProducts.sort((a, b) => b.price - a.price);
+          break;
+        case 'rating':
+          filteredProducts.sort((a, b) => b.rating - a.rating);
+          break;
+        case 'reviews':
+          filteredProducts.sort((a, b) => b.reviewCount - a.reviewCount);
+          break;
+        default:
+          // Keep intelligent ranking from live scraper
+          break;
+      }
+      
+      return filteredProducts;
     } catch (error) {
-      console.error('Real product search error:', error);
+      console.error('Live product search error:', error);
       return [];
     }
   }
@@ -116,12 +146,14 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      const realProducts = await searchRealProducts(searchQuery, 9);
+      const liveProducts = await searchLiveProducts(searchQuery, 12);
       
-      setResults(realProducts);
-      setTotalResults(realProducts.length);
+      setResults(liveProducts);
+      setTotalResults(liveProducts.length);
     } catch (error) {
       console.error('Search error:', error);
+      setResults([]);
+      setTotalResults(0);
     } finally {
       setLoading(false);
     }
@@ -132,7 +164,7 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      const newProducts = await searchRealProducts(query, 6);
+      const newProducts = await searchLiveProducts(query, 8);
       
       setResults(prev => [...prev, ...newProducts]);
       setTotalResults(prev => prev + newProducts.length);
@@ -335,7 +367,7 @@ export default function SearchInterface() {
             {loading && results.length === 0 ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Searching across platforms...</p>
+                <p className="mt-4 text-gray-600">Live scraping Amazon, Noon, Jumia...</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
