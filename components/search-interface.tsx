@@ -43,7 +43,7 @@ const PLATFORM_LOGOS: Record<string, string> = {
 };
 
 export default function SearchInterface() {
-  const { user } = useAuth();
+  const { user, selectedCountry } = useAuth();
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
@@ -57,7 +57,7 @@ export default function SearchInterface() {
     sortBy: 'relevance'
   });
 
-  const currentCountry = user ? countries.find(c => c.code === user.country) : null;
+  const currentCountry = selectedCountry;
 
   // Apply filters when filter settings change
   useEffect(() => {
