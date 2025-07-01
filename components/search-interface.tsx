@@ -85,16 +85,16 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
 
     // Analyze the search query to get relevant category and images
     const searchResult = analyzeSearchQuery(query);
-    const brands = brandsByCategory[searchResult.category] || brandsByCategory.general;
+    const brands = brandsByCategory[searchResult.category] || brandsByCategory.general || ['Premium', 'Elite', 'Professional'];
 
     return selectedCountry.platforms.flatMap((platform, platformIndex) => 
       Array.from({ length: Math.ceil(count / selectedCountry.platforms.length) }, (_, index) => {
         const productIndex = startIndex + platformIndex * Math.ceil(count / selectedCountry.platforms.length) + index;
         const productId = `PROD${String(productIndex + 1000).padStart(8, '0')}`;
         
-        // Generate relevant product title based on search query
-        const variation = searchResult.productVariations[productIndex % searchResult.productVariations.length];
-                 const productTitle = generateRelevantProductTitle(query || 'Product', variation, brands);
+                 // Generate relevant product title based on search query
+         const variation = searchResult.productVariations[productIndex % searchResult.productVariations.length] || 'Standard';
+         const productTitle = generateRelevantProductTitle(query || 'Product', variation, brands);
         
         // Use category-appropriate pricing
         const basePrice = searchResult.basePrice.min + Math.random() * (searchResult.basePrice.max - searchResult.basePrice.min);
