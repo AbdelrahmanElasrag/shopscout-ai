@@ -89,7 +89,7 @@ export default function SearchInterface({ onAuthRequired }: SearchInterfaceProps
           originalPrice: Math.random() > 0.3 ? Math.floor(Math.random() * 1200) + 150 : undefined,
           currency: selectedCountry.currency,
           currencySymbol: selectedCountry.currencySymbol,
-          image: productImages[productIndex % productImages.length],
+                     image: productImages[productIndex % productImages.length] || productImages[0],
           rating: 3.5 + Math.random() * 1.5,
           reviewCount: Math.floor(Math.random() * 2000) + 100,
           platform,
