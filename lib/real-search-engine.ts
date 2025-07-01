@@ -51,6 +51,131 @@ export interface SearchResult {
 
 // Real Product Database - This would be populated from APIs/scraping
 const REAL_PRODUCT_DATABASE = {
+  'smartphone': [
+    {
+      id: 'iphone-15-128gb-smart',
+      title: 'Apple iPhone 15 128GB Smartphone',
+      price: 45999,
+      originalPrice: 47999,
+      discount: '-4%',
+      rating: 4.8,
+      reviewCount: 3456,
+      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop'
+      ],
+      description: 'Apple iPhone 15 Smartphone with A17 Pro chip, 128GB storage, Dynamic Island',
+      brand: 'Apple',
+      availability: 'in_stock' as const,
+      shipping: { free: true, estimatedDays: '1-2 days' }
+    },
+    {
+      id: 'samsung-s24-ultra',
+      title: 'Samsung Galaxy S24 Ultra 256GB',
+      price: 58999,
+      originalPrice: 62999,
+      discount: '-6%',
+      rating: 4.7,
+      reviewCount: 2890,
+      image: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400&h=400&fit=crop'
+      ],
+      description: 'Samsung Galaxy S24 Ultra with S Pen, 256GB storage, AI photography',
+      brand: 'Samsung',
+      availability: 'in_stock' as const,
+      shipping: { free: true, estimatedDays: '1-3 days' }
+    },
+    {
+      id: 'google-pixel-8-pro',
+      title: 'Google Pixel 8 Pro 128GB',
+      price: 42999,
+      originalPrice: 45999,
+      discount: '-7%',
+      rating: 4.6,
+      reviewCount: 1876,
+      image: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop'
+      ],
+      description: 'Google Pixel 8 Pro with AI photography, pure Android, 128GB storage',
+      brand: 'Google',
+      availability: 'limited_stock' as const,
+      shipping: { free: true, estimatedDays: '2-4 days' }
+    }
+  ],
+  'phone': [
+    {
+      id: 'oneplus-12-pro',
+      title: 'OnePlus 12 Pro 256GB',
+      price: 38999,
+      originalPrice: 41999,
+      discount: '-7%',
+      rating: 4.5,
+      reviewCount: 1234,
+      image: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=400&fit=crop'
+      ],
+      description: 'OnePlus 12 Pro with Snapdragon 8 Gen 3, 256GB storage, fast charging',
+      brand: 'OnePlus',
+      availability: 'in_stock' as const,
+      shipping: { free: true, estimatedDays: '1-2 days' }
+    },
+    {
+      id: 'xiaomi-14-ultra',
+      title: 'Xiaomi 14 Ultra 512GB',
+      price: 49999,
+      originalPrice: 53999,
+      discount: '-8%',
+      rating: 4.6,
+      reviewCount: 987,
+      image: 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=400&h=400&fit=crop'
+      ],
+      description: 'Xiaomi 14 Ultra with Leica cameras, 512GB storage, premium design',
+      brand: 'Xiaomi',
+      availability: 'in_stock' as const,
+      shipping: { free: true, estimatedDays: '2-3 days' }
+    }
+  ],
+  'laptop': [
+    {
+      id: 'dell-xps-13',
+      title: 'Dell XPS 13 Laptop',
+      price: 52999,
+      originalPrice: 56999,
+      discount: '-7%',
+      rating: 4.5,
+      reviewCount: 1567,
+      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop'
+      ],
+      description: 'Dell XPS 13 with Intel i7, 16GB RAM, 512GB SSD, premium build',
+      brand: 'Dell',
+      availability: 'in_stock' as const,
+      shipping: { free: true, estimatedDays: '2-3 days' }
+    },
+    {
+      id: 'hp-spectre-x360',
+      title: 'HP Spectre x360 Convertible',
+      price: 61999,
+      originalPrice: 65999,
+      discount: '-6%',
+      rating: 4.4,
+      reviewCount: 892,
+      image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=400&fit=crop',
+      images: [
+        'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=400&fit=crop'
+      ],
+      description: 'HP Spectre x360 convertible laptop with touchscreen, 16GB RAM',
+      brand: 'HP',
+      availability: 'limited_stock' as const,
+      shipping: { free: true, estimatedDays: '3-5 days' }
+    }
+  ],
   'gaming laptop': [
     {
       id: 'asus-rog-strix-g15',
@@ -264,21 +389,47 @@ export class RealSearchEngine {
     const lowerQuery = query.toLowerCase();
     const matchedProducts: any[] = [];
     
-    // Search through the database
+    // Define search synonyms for better matching
+    const searchSynonyms: Record<string, string[]> = {
+      'smartphone': ['phone', 'mobile', 'cell phone', 'iphone', 'android'],
+      'phone': ['smartphone', 'mobile', 'cell phone', 'iphone', 'android'],
+      'laptop': ['computer', 'notebook', 'macbook'],
+      'computer': ['laptop', 'notebook', 'pc'],
+      'gaming': ['game', 'gamer', 'gaming laptop'],
+      'shoes': ['sneakers', 'footwear', 'nike', 'adidas']
+    };
+    
+    // First, try exact and partial matches
     Object.entries(REAL_PRODUCT_DATABASE).forEach(([key, products]) => {
       if (lowerQuery.includes(key) || key.includes(lowerQuery)) {
         matchedProducts.push(...products);
       }
     });
     
-    // If no direct matches, search by brand or category
+    // If no direct matches, try synonyms
+    if (matchedProducts.length === 0) {
+      Object.entries(searchSynonyms).forEach(([synonym, related]) => {
+        if (lowerQuery.includes(synonym)) {
+          related.forEach(relatedTerm => {
+            Object.entries(REAL_PRODUCT_DATABASE).forEach(([key, products]) => {
+              if (key.includes(relatedTerm) || relatedTerm.includes(key)) {
+                matchedProducts.push(...products);
+              }
+            });
+          });
+        }
+      });
+    }
+    
+    // If still no matches, search by brand or product title
     if (matchedProducts.length === 0) {
       Object.values(REAL_PRODUCT_DATABASE).forEach(products => {
         products.forEach(product => {
           if (
             product.title.toLowerCase().includes(lowerQuery) ||
             product.brand.toLowerCase().includes(lowerQuery) ||
-            lowerQuery.includes(product.brand.toLowerCase())
+            lowerQuery.includes(product.brand.toLowerCase()) ||
+            product.description.toLowerCase().includes(lowerQuery)
           ) {
             matchedProducts.push(product);
           }
@@ -286,7 +437,12 @@ export class RealSearchEngine {
       });
     }
     
-    return matchedProducts;
+    // Remove duplicates based on product id
+    const uniqueProducts = matchedProducts.filter((product, index, self) =>
+      index === self.findIndex(p => p.id === product.id)
+    );
+    
+    return uniqueProducts;
   }
 
   private distributeAcrossPlatforms(products: any[], query: string): RealProduct[] {
