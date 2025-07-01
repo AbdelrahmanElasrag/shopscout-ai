@@ -153,8 +153,8 @@ export default function SearchInterface() {
       })
       .sort((a, b) => {
         switch (filters.sortBy) {
-          case 'price-low': return a.price - b.price;
-          case 'price-high': return b.price - a.price;
+          case 'price_low': return a.price - b.price;
+          case 'price_high': return b.price - a.price;
           case 'rating': return b.rating - a.rating;
           case 'reviews': return b.reviewCount - a.reviewCount;
           default: return 0; // relevance (keep original order)
@@ -294,8 +294,8 @@ export default function SearchInterface() {
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 >
                   <option value="relevance">Relevance</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
+                  <option value="price_low">Price: Low to High</option>
+                  <option value="price_high">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
                   <option value="reviews">Most Reviews</option>
                 </select>
