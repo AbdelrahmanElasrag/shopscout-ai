@@ -9,8 +9,7 @@
     }
   },
   "env": {
-    "NEXT_PUBLIC_APP_NAME": "ShopScout AI",
-    "NEXT_PUBLIC_APP_URL": "@next_public_app_url"
+    "NEXT_PUBLIC_APP_NAME": "ShopScout AI"
   },
   "build": {
     "env": {
