@@ -120,12 +120,16 @@ export class RainforestAPI {
     limit: number = 12
   ): Promise<RainforestSearchResult> {
     try {
+      console.log('🌟 Rainforest API - Starting search:', { query, country: country.name, apiKey: this.apiKey.substring(0, 8) + '...' });
+
       const amazonDomain = AMAZON_DOMAINS[country.name as keyof typeof AMAZON_DOMAINS];
       const platformInfo = PLATFORM_INFO[country.name as keyof typeof PLATFORM_INFO];
 
       if (!amazonDomain || !platformInfo) {
         throw new Error(`Unsupported country: ${country.name}`);
       }
+
+      console.log('🏪 Rainforest API - Amazon domain:', amazonDomain);
 
       const params = new URLSearchParams({
         api_key: this.apiKey,
@@ -142,16 +146,30 @@ export class RainforestAPI {
         params.append('max_price', filters.priceRange.max.toString());
       }
 
-      const response = await fetch(`${this.baseUrl}?${params}`);
+      const requestUrl = `${this.baseUrl}?${params}`;
+      console.log('🔗 Rainforest API - Request URL:', requestUrl.replace(this.apiKey, 'API_KEY_HIDDEN'));
+
+      const response = await fetch(requestUrl);
+      console.log('📡 Rainforest API - Response status:', response.status, response.statusText);
+
       const data = await response.json();
+      console.log('📦 Rainforest API - Response data keys:', Object.keys(data));
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch products');
+        console.error('❌ Rainforest API - Error response:', data);
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return this.parseSearchResults(data, platformInfo, limit);
+      const result = this.parseSearchResults(data, platformInfo, limit);
+      console.log('✅ Rainforest API - Parsed results:', {
+        products: result.products.length,
+        totalResults: result.totalResults,
+        searchTime: result.searchTime
+      });
+
+      return result;
     } catch (error) {
-      console.error('Rainforest API Error:', error);
+      console.error('❌ Rainforest API Error:', error);
       // Return empty result on error
       return {
         products: [],
