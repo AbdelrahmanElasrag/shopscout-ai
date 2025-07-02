@@ -59,16 +59,34 @@ export default function SearchInterface() {
     }
     
     try {
-      console.log(`🚀 Starting Rainforest API search for "${query}" in ${currentCountry.name}`);
+      console.log(`🚀 Starting API search for "${query}" in ${currentCountry.name}`);
       
-      const rainforestAPI = getRainforestAPI();
-      const result = await rainforestAPI.searchProducts(query, currentCountry, filters, page, 12);
+      // Call the API route instead of calling Rainforest API directly
+      const response = await fetch('/api/amazon-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          countryCode: currentCountry.code,
+          filters,
+          limit: 12
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Search failed');
+      }
+
+      const result: RainforestSearchResult = await response.json();
       
       console.log(`✅ Found ${result.products.length} products in ${result.searchTime}ms`);
       return result;
       
     } catch (error) {
-      console.error('Rainforest API search error:', error);
+      console.error('API search error:', error);
       return {
         products: [],
         totalResults: 0,
@@ -93,7 +111,7 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      console.log(`🔍 Searching Rainforest API for: "${searchQuery}"`);
+      console.log(`🔍 Searching for: "${searchQuery}"`);
       const searchResult = await searchRainforestProducts(searchQuery, 1);
       
       setResults(searchResult.products);
@@ -316,7 +334,7 @@ export default function SearchInterface() {
             {loading && results.length === 0 ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Searching Amazon with PA-API 5.0...</p>
+                <p className="mt-4 text-gray-600">Searching Amazon with Rainforest API...</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
