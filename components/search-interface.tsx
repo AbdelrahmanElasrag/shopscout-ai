@@ -1,34 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import LiveProductScraper, { LiveProduct, LiveSearchResult } from '@/lib/live-scraper';
+import { getRainforestAPI, RainforestProduct, RainforestSearchFilters, RainforestSearchResult } from '@/lib/rainforest-api';
 import { popularCategories } from '@/lib/search-engine';
 import { useAuth } from '@/lib/auth-context';
 import { useFavorites } from '@/lib/favorites-context';
 
-// Using LiveProduct from live-scraper.ts  
-type Product = LiveProduct;
-
-// Using SearchFilters from real-search-engine.ts but with compatible naming
-interface Filters {
-  priceRange: { min: number; max: number };
-  minRating: number;
-  inStock: boolean;
-  sortBy: 'relevance' | 'price_low' | 'price_high' | 'rating' | 'reviews';
-}
+// Using RainforestProduct from Rainforest API
+type Product = RainforestProduct;
 
 const PLATFORM_LOGOS: Record<string, string> = {
   'Amazon Egypt': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
-  'Noon Egypt': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
-  'Jumia Egypt': 'https://upload.wikimedia.org/wikipedia/commons/6/6c/Jumia_Logo.png',
   'Amazon UAE': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
-  'Noon UAE': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
-  'Amazon Saudi': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
-  'Noon Saudi': 'https://logos-world.net/wp-content/uploads/2021/08/Noon-Logo.png',
-  'Amazon US': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
-  'Walmart US': 'https://upload.wikimedia.org/wikipedia/commons/c/ca/Walmart_logo.svg',
-  'Amazon UK': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
-  'Argos UK': 'https://logos-world.net/wp-content/uploads/2020/12/Argos-Logo.png'
+  'Amazon Saudi Arabia': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Amazon United States': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+  'Amazon United Kingdom': 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg'
 };
 
 export default function SearchInterface() {
@@ -39,113 +25,66 @@ export default function SearchInterface() {
   const [loading, setLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<Filters>({
+  const [searchTime, setSearchTime] = useState(0);
+  const [filters, setFilters] = useState<RainforestSearchFilters>({
     priceRange: { min: 0, max: 10000 },
-    minRating: 0,
-    inStock: false,
+    rating: 0,
+    availability: [],
+    shipping: [],
+    brand: [],
+    category: [],
     sortBy: 'relevance'
   });
 
   const currentCountry = selectedCountry;
 
-  // Apply filters when filter settings change
-  useEffect(() => {
-    if (results.length > 0) {
-      const filteredResults = applyFilters(results);
-      if (filteredResults.length !== results.length) {
-        setResults(filteredResults);
-        setTotalResults(filteredResults.length);
-      }
+  async function searchRainforestProducts(query: string, page: number = 1): Promise<RainforestSearchResult> {
+    if (!currentCountry) {
+      return {
+        products: [],
+        totalResults: 0,
+        currentPage: 1,
+        totalPages: 0,
+        filters: {
+          priceRange: { min: 0, max: 10000 },
+          rating: 0,
+          availability: [],
+          shipping: [],
+          brand: [],
+          category: [],
+          sortBy: 'relevance'
+        },
+        searchTime: 0
+      };
     }
-  }, [filters]);
-
-  const generateSearchURL = (platform: string, query: string): string => {
-    const encodedQuery = encodeURIComponent(query);
-    
-    // Generate actual search URLs that work
-    switch (platform) {
-      case 'Amazon Egypt':
-        return `https://www.amazon.eg/s?k=${encodedQuery}&ref=nb_sb_noss`;
-      case 'Noon Egypt':
-        return `https://www.noon.com/egypt-en/search/?q=${encodedQuery}`;
-      case 'Jumia Egypt':
-        return `https://www.jumia.com.eg/catalog/?q=${encodedQuery}`;
-      case 'Amazon UAE':
-        return `https://www.amazon.ae/s?k=${encodedQuery}&ref=nb_sb_noss`;
-      case 'Noon UAE':
-        return `https://www.noon.com/uae-en/search/?q=${encodedQuery}`;
-      case 'Amazon Saudi':
-        return `https://www.amazon.sa/s?k=${encodedQuery}&ref=nb_sb_noss`;
-      case 'Noon Saudi':
-        return `https://www.noon.com/saudi-en/search/?q=${encodedQuery}`;
-      case 'Amazon US':
-        return `https://www.amazon.com/s?k=${encodedQuery}&ref=nb_sb_noss`;
-      case 'Walmart US':
-        return `https://www.walmart.com/search?q=${encodedQuery}`;
-      case 'Amazon UK':
-        return `https://www.amazon.co.uk/s?k=${encodedQuery}&ref=nb_sb_noss`;
-      case 'Argos UK':
-        return `https://www.argos.co.uk/search/${encodedQuery}/`;
-      default:
-        return '#';
-    }
-  };
-
-  async function searchLiveProducts(query: string, count: number): Promise<Product[]> {
-    if (!currentCountry) return [];
     
     try {
-      // API Keys Configuration - Replace YOUR_API_KEY with your actual key
-      const apiKeys = {
-        scrapingBee: 'YOUR_API_KEY_HERE', // Put your ScrapingBee API key here
-        scraperApi: undefined,
-        brightData: undefined,
-        zenRows: undefined,
-      };
+      console.log(`🚀 Starting Rainforest API search for "${query}" in ${currentCountry.name}`);
       
-      const liveScraper = new LiveProductScraper(currentCountry, apiKeys);
-      const result = await liveScraper.searchLiveProducts(query, count);
+      const rainforestAPI = getRainforestAPI();
+      const result = await rainforestAPI.searchProducts(query, currentCountry, filters, page, 12);
       
-      // Apply local filters to the live results
-      let filteredProducts = result.products;
+      console.log(`✅ Found ${result.products.length} products in ${result.searchTime}ms`);
+      return result;
       
-      if (filters.priceRange.min > 0 || filters.priceRange.max < 100000) {
-        filteredProducts = filteredProducts.filter(product => 
-          product.price >= filters.priceRange.min && product.price <= filters.priceRange.max
-        );
-      }
-      
-      if (filters.minRating > 0) {
-        filteredProducts = filteredProducts.filter(product => product.rating >= filters.minRating);
-      }
-      
-      if (filters.inStock) {
-        filteredProducts = filteredProducts.filter(product => product.availability === 'in_stock');
-      }
-      
-      // Apply sorting
-      switch (filters.sortBy) {
-        case 'price_low':
-          filteredProducts.sort((a, b) => a.price - b.price);
-          break;
-        case 'price_high':
-          filteredProducts.sort((a, b) => b.price - a.price);
-          break;
-        case 'rating':
-          filteredProducts.sort((a, b) => b.rating - a.rating);
-          break;
-        case 'reviews':
-          filteredProducts.sort((a, b) => b.reviewCount - a.reviewCount);
-          break;
-        default:
-          // Keep intelligent ranking from live scraper
-          break;
-      }
-      
-      return filteredProducts;
     } catch (error) {
-      console.error('Live product search error:', error);
-      return [];
+      console.error('Rainforest API search error:', error);
+      return {
+        products: [],
+        totalResults: 0,
+        currentPage: 1,
+        totalPages: 0,
+        filters: {
+          priceRange: { min: 0, max: 10000 },
+          rating: 0,
+          availability: [],
+          shipping: [],
+          brand: [],
+          category: [],
+          sortBy: 'relevance'
+        },
+        searchTime: 0
+      };
     }
   }
 
@@ -154,10 +93,12 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      const liveProducts = await searchLiveProducts(searchQuery, 12);
+      console.log(`🔍 Searching Rainforest API for: "${searchQuery}"`);
+      const searchResult = await searchRainforestProducts(searchQuery, 1);
       
-      setResults(liveProducts);
-      setTotalResults(liveProducts.length);
+      setResults(searchResult.products);
+      setTotalResults(searchResult.totalResults);
+      setSearchTime(searchResult.searchTime);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -172,34 +113,16 @@ export default function SearchInterface() {
     
     setLoading(true);
     try {
-      const newProducts = await searchLiveProducts(query, 8);
+      const currentPage = Math.floor(results.length / 12) + 1;
+      const searchResult = await searchRainforestProducts(query, currentPage + 1);
       
-      setResults(prev => [...prev, ...newProducts]);
-      setTotalResults(prev => prev + newProducts.length);
+      setResults((prev: Product[]) => [...prev, ...searchResult.products]);
+      setTotalResults((prev: number) => prev + searchResult.products.length);
     } catch (error) {
       console.error('Load more error:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const applyFilters = (products: Product[]): Product[] => {
-    return products
-      .filter(product => {
-        if (product.price < filters.priceRange.min || product.price > filters.priceRange.max) return false;
-        if (product.rating < filters.minRating) return false;
-        if (filters.inStock && product.availability !== 'in_stock') return false;
-        return true;
-      })
-      .sort((a, b) => {
-        switch (filters.sortBy) {
-          case 'price_low': return a.price - b.price;
-          case 'price_high': return b.price - a.price;
-          case 'rating': return b.rating - a.rating;
-          case 'reviews': return b.reviewCount - a.reviewCount;
-          default: return 0; // relevance (keep original order)
-        }
-      });
   };
 
   const handleCategoryClick = (keywords: string[]) => {
@@ -210,8 +133,6 @@ export default function SearchInterface() {
       handleSearch(randomKeyword);
     }
   };
-
-
 
   const toggleFavorite = (product: Product) => {
     if (isFavorite(product.id)) {
@@ -234,6 +155,20 @@ export default function SearchInterface() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Rainforest API Notice */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-green-600">🌟</span>
+            <div>
+              <h4 className="font-medium text-green-900">Rainforest API - Real Amazon Data!</h4>
+              <p className="text-sm text-green-700">
+                This search uses <strong>Rainforest API</strong> for real-time Amazon product data across all your markets. 
+                <strong> Add your Rainforest API key to enable live searches.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Search Header */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -244,7 +179,7 @@ export default function SearchInterface() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="Search for products across multiple platforms..."
+                  placeholder="Search Amazon products across regions..."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                 />
                 <button
@@ -273,7 +208,7 @@ export default function SearchInterface() {
                     type="number"
                     placeholder="Min"
                     value={filters.priceRange.min}
-                    onChange={(e) => setFilters((prev: Filters) => ({
+                    onChange={(e) => setFilters(prev => ({
                       ...prev,
                       priceRange: { ...prev.priceRange, min: Number(e.target.value) }
                     }))}
@@ -295,8 +230,8 @@ export default function SearchInterface() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Min Rating</label>
                 <select
-                  value={filters.minRating}
-                  onChange={(e) => setFilters(prev => ({ ...prev, minRating: Number(e.target.value) }))}
+                  value={filters.rating}
+                  onChange={(e) => setFilters(prev => ({ ...prev, rating: Number(e.target.value) }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 >
                   <option value={0}>Any Rating</option>
@@ -311,8 +246,13 @@ export default function SearchInterface() {
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={filters.inStock}
-                    onChange={(e) => setFilters(prev => ({ ...prev, inStock: e.target.checked }))}
+                    checked={filters.availability.includes('in_stock')}
+                    onChange={(e) => {
+                      const newAvailability = e.target.checked 
+                        ? [...filters.availability, 'in_stock']
+                        : filters.availability.filter(a => a !== 'in_stock');
+                      setFilters(prev => ({ ...prev, availability: newAvailability }));
+                    }}
                     className="mr-2"
                   />
                   <span className="text-sm">In Stock Only</span>
@@ -323,14 +263,14 @@ export default function SearchInterface() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                 <select
                   value={filters.sortBy}
-                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as Filters['sortBy'] }))}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as RainforestSearchFilters['sortBy'] }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
                 >
                   <option value="relevance">Relevance</option>
                   <option value="price_low">Price: Low to High</option>
                   <option value="price_high">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
-                  <option value="reviews">Most Reviews</option>
+                  <option value="newest">Newest</option>
                 </select>
               </div>
             </div>
@@ -363,10 +303,11 @@ export default function SearchInterface() {
           <div className="flex-1">
             {totalResults > 0 && (
               <div className="mb-4 text-sm text-gray-600">
-                Showing {results.length} of {totalResults} results for "{query}"
+                Showing {results.length} results for "{query}" 
+                {searchTime > 0 && <span className="ml-2">({searchTime}ms)</span>}
                 {currentCountry && (
                   <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                    {currentCountry.flag} {currentCountry.name}
+                    {currentCountry.flag} Amazon {currentCountry.name}
                   </span>
                 )}
               </div>
@@ -375,7 +316,7 @@ export default function SearchInterface() {
             {loading && results.length === 0 ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Live scraping Amazon, Noon, Jumia...</p>
+                <p className="mt-4 text-gray-600">Searching Amazon with PA-API 5.0...</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -421,7 +362,7 @@ export default function SearchInterface() {
                           className="w-5 h-5 object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.src = 'https://via.placeholder.com/20x20';
+                            target.src = 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg';
                           }}
                         />
                         <span className="text-xs text-blue-600 font-medium">{product.platform.name}</span>
@@ -439,12 +380,12 @@ export default function SearchInterface() {
 
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-2xl font-bold text-green-600">
-                          {product.price.toLocaleString()}{product.currencySymbol}
+                          {product.currencySymbol}{product.price.toLocaleString()}
                         </span>
                         {product.originalPrice && (
                           <>
                             <span className="text-sm text-gray-500 line-through">
-                              {product.originalPrice.toLocaleString()}{product.currencySymbol}
+                              {product.currencySymbol}{product.originalPrice.toLocaleString()}
                             </span>
                             <span className="text-sm text-red-600 font-medium">{product.discount}</span>
                           </>
@@ -457,7 +398,7 @@ export default function SearchInterface() {
                         rel="noopener noreferrer"
                         className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-center block"
                       >
-                        View on {product.platform.name} →
+                        View on Amazon →
                       </a>
                     </div>
                   </div>
@@ -487,13 +428,13 @@ export default function SearchInterface() {
 
             {results.length === 0 && !loading && (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Start Your Search</h3>
+                <div className="text-6xl mb-4">🛒</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Search Amazon Products</h3>
                 <p className="text-gray-600 mb-6">
-                  Search for any product and we'll find the best deals across multiple platforms
+                  Search across Amazon marketplaces using the official Product Advertising API
                 </p>
                 <div className="text-sm text-gray-500">
-                  Try searching for: "iPhone 15", "MacBook Pro", "Nike shoes", or "Gaming laptop"
+                  Try searching for: "iPhone 15", "MacBook Pro", "Gaming headset", or "Running shoes"
                 </div>
               </div>
             )}
