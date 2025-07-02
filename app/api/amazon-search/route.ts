@@ -41,9 +41,13 @@ export async function POST(request: NextRequest) {
                     country.name === 'United States' ? 'amazon.com' :
                     country.name === 'United Kingdom' ? 'amazon.co.uk' : 'amazon.com',
       search_term: query,
-      sort_by: filters?.sortBy || 'relevance',
       page: '1'
     });
+
+    // Only add sort_by for domains that support it (US, UK)
+    if (country.name === 'United States' || country.name === 'United Kingdom') {
+      params.append('sort_by', filters?.sortBy || 'relevance');
+    }
 
     console.log('🚀 API Route - Making direct Rainforest API call...');
     
