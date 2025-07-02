@@ -54,7 +54,7 @@ export interface RainforestSearchResult {
 // Amazon domain mapping for different countries
 const AMAZON_DOMAINS = {
   'Egypt': 'amazon.eg',
-  'UAE': 'amazon.ae',
+  'United Arab Emirates': 'amazon.ae',
   'Saudi Arabia': 'amazon.sa',
   'United States': 'amazon.com',
   'United Kingdom': 'amazon.co.uk',
@@ -70,7 +70,7 @@ const PLATFORM_INFO = {
     currency: 'EGP',
     currencySymbol: 'ج.م',
   },
-  'UAE': {
+  'United Arab Emirates': {
     id: 'amazon_ae',
     name: 'Amazon UAE',
     domain: 'amazon.ae',

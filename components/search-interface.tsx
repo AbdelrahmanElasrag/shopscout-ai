@@ -36,7 +36,15 @@ export default function SearchInterface() {
     sortBy: 'relevance'
   });
 
-  const currentCountry = selectedCountry;
+  // Default to Egypt if no country is selected
+  const currentCountry = selectedCountry || {
+    code: 'EG',
+    name: 'Egypt',
+    currency: 'EGP',
+    currencySymbol: 'ج.م',
+    flag: '🇪🇬',
+    platforms: []
+  };
 
   async function searchRainforestProducts(query: string, page: number = 1): Promise<RainforestSearchResult> {
     if (!currentCountry) {
