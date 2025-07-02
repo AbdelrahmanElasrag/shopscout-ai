@@ -48,6 +48,7 @@ export default function SearchInterface() {
 
   async function searchRainforestProducts(query: string, page: number = 1): Promise<RainforestSearchResult> {
     if (!currentCountry) {
+      console.log('❌ No country selected, using default Egypt');
       return {
         products: [],
         totalResults: 0,
@@ -68,33 +69,56 @@ export default function SearchInterface() {
     
     try {
       console.log(`🚀 Starting API search for "${query}" in ${currentCountry.name}`);
+      console.log('🏳️ Country details:', currentCountry);
+      console.log('📡 Making fetch request to /api/amazon-search');
       
       // Call the API route instead of calling Rainforest API directly
+      const requestBody = {
+        query,
+        countryCode: currentCountry.code,
+        filters,
+        limit: 12
+      };
+      console.log('📤 Request body:', requestBody);
+
       const response = await fetch('/api/amazon-search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query,
-          countryCode: currentCountry.code,
-          filters,
-          limit: 12
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('📥 Response status:', response.status, response.statusText);
+      console.log('📥 Response ok:', response.ok);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
         throw new Error(errorData.message || 'Search failed');
       }
 
       const result: RainforestSearchResult = await response.json();
+      console.log('✅ API Response received:', result);
       
       console.log(`✅ Found ${result.products.length} products in ${result.searchTime}ms`);
       return result;
       
     } catch (error) {
-      console.error('API search error:', error);
+      console.error('❌ API search error:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       return {
         products: [],
         totalResults: 0,
