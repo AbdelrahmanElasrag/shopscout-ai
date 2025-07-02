@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 API Route - Search request:', { query, countryCode, limit });
     console.log('🔑 API Route - API Key available:', !!process.env.RAINFOREST_API_KEY);
+    console.log('🔑 API Route - API Key first 8 chars:', process.env.RAINFOREST_API_KEY?.substring(0, 8) || 'NOT_SET');
+    console.log('🔑 API Route - Using demo key?:', process.env.RAINFOREST_API_KEY === 'demo');
     console.log('🌍 API Route - Available countries:', countries.map(c => c.code));
 
     // Find the country
@@ -47,6 +49,7 @@ export async function POST(request: NextRequest) {
         message: error instanceof Error ? error.message : 'Unknown error',
         details: {
           apiKeyConfigured: !!process.env.RAINFOREST_API_KEY,
+          apiKeyFirstChars: process.env.RAINFOREST_API_KEY?.substring(0, 8) || 'NOT_SET',
           timestamp: new Date().toISOString()
         }
       },
